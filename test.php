@@ -142,21 +142,9 @@ function validation($oldX, $oldY, $newX, $newY, $dataGrid){
     }
 }
 
-function bauerMoveValid($oldY, $newY, $fieldValue){
-    if($fieldValue > 0){
-        if($newY - $oldY == -1){
-            return true;
-        }elseif($newY - $oldY == -2 && $oldY == 6){
-            return true;
-        }
-    } elseif($fieldValue < 0){
-        if($newY - $oldY == 1){
-            return true;
-        }elseif($newY - $oldY == 2 && $oldY == 1){
-            return true;
-        }
-    }
-    return false;
+function bauerMoveValid($oldX, $oldY,$dataGrid){
+    $possibleMoves = [];
+    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, 0, 1 ,$dataGrid, true));
 }
 
 function getValidCoordinatesForTurm($kindOfMove, $x, $y, $dataGrid){
@@ -178,11 +166,16 @@ function turmMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
 }
 
 function reiterMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
-    $directions = [-1,-1,1,1,1,-1,-1,1];
+    $directions = [[1,2],[-1,2],[1,-2],[-1,2]];
     $possibleMoves = [];
-    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, 0, -1, 8, 2 ,$dataGrid));
-    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, -1, 0, 1, 8 ,$dataGrid));
-    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, 1, 0, 1, 8 ,$dataGrid));
+    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, 1, 2 ,$dataGrid, true));
+    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, -1, 2 ,$dataGrid, true));
+    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, 1, -2 ,$dataGrid, true));
+    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, -1, -2 ,$dataGrid, true));
+    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, -2, 1 ,$dataGrid, true));
+    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, -2, -1 ,$dataGrid, true));
+    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, 2, 1 ,$dataGrid, true));
+    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, 2, -1 ,$dataGrid, true));
     file_put_contents("reiter.json", json_encode($possibleMoves));
 }
 
@@ -265,18 +258,22 @@ function calculatePossibleMovesDiagonal($x, $y, $dataGrid){
     return $moves;
 }
 
-function calculateMoves($x, $y, $directionX, $directionY, $capX, $capY ,$dataGrid){
+function calculateMoves($x, $y, $directionX, $directionY ,$dataGrid, $oneTimeOnly = false){
     $posX = $x + $directionX;
     $posY = $y + $directionY;
     $possibleMoves = [];
 
-    while($posX >= $capX && $posX < $capX && $posY >= $capY && $posY < $capY) {
+    while($posX >= 0 && $posX < 8 && $posY >= 0 && $posY < 8) {
         if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
                 break;
         } else {
             $possibleMoves[] = [$posX, $posY];
             $posX += $directionX;
             $posY += $directionY;
+        }
+
+        if ($oneTimeOnly) {
+            break;
         }
     }
     return $possibleMoves;    
