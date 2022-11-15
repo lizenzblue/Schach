@@ -17,7 +17,6 @@ function writeToDataGrid($x, $y, $figure){
 4 = Springer
 5 = Dame
 6 = König
-test
 */ 
 
 function getFigureCodeByNumber($number) {
@@ -123,7 +122,7 @@ function validation($oldX, $oldY, $newX, $newY, $dataGrid){
                 break;
                 case 3:
                 case -3:
-                    if(reiterMoveValid($oldX, $oldY, $newX, $newY) == true){
+                    if(reiterMoveValid($oldX, $oldY, $newX, $newY, $dataGrid) == true){
                         return true;
                     } else {return false;}
                 break;
@@ -161,85 +160,7 @@ function bauerMoveValid($oldY, $newY, $fieldValue){
 }
 
 function getValidCoordinatesForTurm($kindOfMove, $x, $y, $dataGrid){
-    switch($kindOfMove){
-        case 1:
-            $moves = [];
-            for($i = 0; $i < 2; $i++){
-                switch($i){
-                    case 0:
-                        $directionX = -1;
-                        $posX = $x + $directionX;
-                        $posY = $y;
-                    
-                        while($posX >= 0 && $posX < 8) {
-                            if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
-                                break;
-                            } else {
-                                array_push($moves,[$posX, $posY]);
-                                $posX += $directionX;
-                            }
-                        }
-                    
-                        return $moves;
-                    break;
-                    case 1:
-                        $directionX = 1;
-                        $posX = $x + $directionX;
-                        $posY = $y;
-                    
-                        while($posX >= 0 && $posX < 8) {
-                            if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
-                                break;
-                            } else {
-                                array_push($moves,[$posX, $posY]);
-                                $posX += $directionX;
-                            }
-                        }
-                    
-                        return $moves;
-                    break;
-                }
-            }
-        break;
-        case 2:
-            $moves = [];
-            for($i = 0; $i < 2; $i++){
-                switch($i){
-                    case 0:
-                        $directionY = -1;
-                        $posX = $x;
-                        $posY = $y + $directionY;
-                    
-                    
-                        while($posY >= 0 && $posY < 8) {
-                            if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
-                                break;
-                            } else {
-                                array_push($moves, [$posX, $posY]);
-                                $posY += $directionY;
-                            }
-                        }
-                    break;
-                    case 1:
-                        $directionY = 1;
-                        $posX = $x;
-                        $posY = $y + $directionY;
-                    
-                    
-                        while($posY >= 0 && $posY < 8) {
-                            if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
-                                break;
-                            } else {
-                                array_push($moves, [$posX, $posY]);
-                                $posY += $directionY;
-                            }
-                        }
-                    break;
-                }
-            }
-            return $moves;
-        break;
-    }
+ 
 }
 
 function turmMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
@@ -256,33 +177,32 @@ function turmMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
     }
 }
 
-function reiterMoveValid($oldX, $oldY, $newX, $newY){
-    if($newY - $oldY == 2 || $newY - $oldY == -2 || $newX - $oldX == 2 || $newX - $oldX == -2){
-        if($newY - $oldY == 1 || $newY - $oldY == -1 || $newX - $oldX == 1 || $newX - $oldX == -1){
-            return true;
-        }
-    } elseif ($newY - $oldY == 1 || $newY - $oldY == -1 || $newX - $oldX == 1 || $newX - $oldX == -1) {
-        if($newY - $oldY == 2 || $newY - $oldY == -2 || $newX - $oldX == 2 || $newX - $oldX == -2){
-            return true;
-        }
-    }
-    return false;
+function reiterMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
+    $directions = [-1,-1,1,1,1,-1,-1,1];
+    $possibleMoves = [];
+    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, 0, -1, 8, 2 ,$dataGrid));
+    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, -1, 0, 1, 8 ,$dataGrid));
+    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, 1, 0, 1, 8 ,$dataGrid));
+    file_put_contents("reiter.json", json_encode($possibleMoves));
 }
 
-function getValidCoordinatesForQueenShort($x, $y, $dataGrid) {
-    $moves = getValidCoordinatesForBishop($x, $y, 1, -1, $dataGrid);
-    $moves = array_merge($moves, getValidCoordinatesForBishop($x, $y, -1, -1, $dataGrid));
-    $moves = array_merge($moves, getValidCoordinatesForBishop($x, $y, -1, 1, $dataGrid));
-    $moves = array_merge($moves, getValidCoordinatesForBishop($x, $y, 1, 1, $dataGrid));
-    $moves = array_merge($moves, getValidCoordinatesForBishop($x, $y, 0, -1, $dataGrid));
-    $moves = array_merge($moves, getValidCoordinatesForBishop($x, $y, 0, 1, $dataGrid));
-    $moves = array_merge($moves, getValidCoordinatesForBishop($x, $y, 1, 0, $dataGrid));
-    $moves = array_merge($moves, getValidCoordinatesForBishop($x, $y, -1, 0, $dataGrid));
-}
 
-function getValidCoordinatesForBishop($x, $y, $i, $j, $dataGrid) {
-    $posX = $x + $i;
-    $posY = $y + $j;
+/*
+
+fn requestmove(figure, oldx, oldy, newx, newy)
+    checks which figure should move and declairs 
+    $directionX
+    $directionY
+    calls function that checks for possible moves
+    possible = checkForPossibleMoves(figure, x, y, directionX, directionY)
+
+fn checkForPossibleMoves(figure, x, y, directionX, directionY)
+    switch(figure)y
+
+
+fn calculatePossibleMovesDiagonal($x, $y, $directionX, $directionY)
+    $posX = $x + $directionX;
+    $posY = $y + $directionY;
 
     $moves = [];
 
@@ -291,182 +211,85 @@ function getValidCoordinatesForBishop($x, $y, $i, $j, $dataGrid) {
             break;
         } else {
             $moves[] = [$posX, $posY];
-            $posX += $i;
-            $posY += $j;
+            $posX += $directionX;
+            $posY += $directionY;
         }
     }    
 
     return $moves;
+
+fn calculatePossibleMovesStraight($x, $y, $directionX, $directionY)
+
+*/
+
+function calculatePossibleMovesStraight($x, $y, $whatToCalculate, $dataGrid){
+    $moves = [];
+    $direction = 1;
+    if($whatToCalculate == "x"){
+        for($i = 0; $i < 2; $i++){
+            //$moves = array_merge($moves, calculateMoves($x, $y, $direction, 0, $dataGrid));
+            $direction = $direction * -1;
+        }
+    } elseif($whatToCalculate == "y"){
+        for($i = 0; $i < 2; $i++){
+            //$moves = array_merge($moves, calculateMoves($x, $y, 0, $direction, $dataGrid));
+            $direction = $direction * -1;
+        }
+    } else {
+        for($i = 0; $i < 4; $i++){
+            if($i < 2){
+                //$moves = array_merge($moves, calculateMoves($x, $y, $direction, 0, $dataGrid));
+                $direction = $direction * -1;
+            } elseif($i >= 2){
+                //$moves = array_merge($moves, calculateMoves($x, $y, 0, $direction, $dataGrid));
+                $direction = $direction * -1;
+            }
+        }
+    }
+    return $moves;
 }
 
+function calculatePossibleMovesDiagonal($x, $y, $dataGrid){
+    $directions = [-1,-1,1,1,1,-1,-1,1];
+    $inArrayX = 0;
+    $inArrayY = 1;
+    $moves = [];
+    // mit dem for Loop werden alle Richtungen durchgegangen
+    for($i = 0; $i < 4; $i++){
+        $directionX = $directions[$inArrayX];
+        $directionY = $directions[$inArrayY];
+        //$moves = array_merge($moves, calculateMoves($x, $y, $directionX, $directionY, $dataGrid));
+        $directionX += 2;
+        $directionY += 2;
+    }
+    return $moves;
+}
+
+function calculateMoves($x, $y, $directionX, $directionY, $capX, $capY ,$dataGrid){
+    $posX = $x + $directionX;
+    $posY = $y + $directionY;
+    $possibleMoves = [];
+
+    while($posX >= $capX && $posX < $capX && $posY >= $capY && $posY < $capY) {
+        if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
+                break;
+        } else {
+            $possibleMoves[] = [$posX, $posY];
+            $posX += $directionX;
+            $posY += $directionY;
+        }
+    }
+    return $possibleMoves;    
+}
+
+
 function bishopMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
-    $moves = getValidCoordinatesForBishop($oldX, $oldY, 1, 1, $dataGrid);
-    $moves = array_merge($moves, getValidCoordinatesForBishop($oldX, $oldY, 1, -1, $dataGrid));
-    $moves = array_merge($moves, getValidCoordinatesForBishop($oldX, $oldY, -1, 1, $dataGrid));
-    $moves = array_merge($moves, getValidCoordinatesForBishop($oldX, $oldY, -1, -1, $dataGrid));
+    $moves = calculatePossibleMovesDiagonal($oldX, $oldY, $dataGrid);
     $requestedMove = [$newX, $newY];
     return checkIfRequestedMoveIsInAllowedMoves($requestedMove, $moves);
 }
 
-function getValidCoordinatesForQueen($kindOfMove, $x, $y, $dataGrid){
-    switch($kindOfMove){
-        case 1:
-            $moves = [];
-            for($i = 0; $i < 2; $i++){
-                switch($i){
-                    case 0:
-                        $directionY = 1;
-                        $posX = $x;
-                        $posY = $y + $directionY;
-                    
-                    
-                        while($posY >= 0 && $posY < 8) {
-                            if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
-                                break;
-                            } else {
-                                array_push($moves, [$posX, $posY]);
-                                $posY += $directionY;
-                            }
-                        }
-                    break;
-                    case 1:
-                        $directionY = -1;
-                        $posX = $x;
-                        $posY = $y + $directionY;
-                    
-                    
-                        while($posY >= 0 && $posY < 8) {
-                            if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
-                                break;
-                            } else {
-                                array_push($moves, [$posX, $posY]);
-                                $posY += $directionY;
-                            }
-                        }
-                    break;
-                }
-            }
-            return $moves;
-            break;
-        case 2:
-            $moves = [];
-            for($i = 0; $i < 2; $i++){
-                switch($i){
-                    case 0:
-                        $directionX = 1;
-                        $posX = $x + $directionX;
-                        $posY = $y;
-                    
-                    
-                        while($posX >= 0 && $posX < 8) {
-                            if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
-                                break;
-                            } else {
-                                array_push($moves, [$posX, $posY]);
-                                $posX += $directionX;
-                            }
-                        }
-                    break;
-                    case 1:
-                        $directionX = -1;
-                        $posX = $x + $directionX;
-                        $posY = $y;
-                    
-                    
-                        while($posX >= 0 && $posX < 8) {
-                            if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
-                                break;
-                            } else {
-                                array_push($moves, [$posX, $posY]);
-                                $posX += $directionX;
-                            }
-                        }
-                    break;
-                }
-            }
-            return $moves;
-            break;
-        case 3:
-            $moves = [];
-            for($i = 0; $i < 4; $i++){
-                switch($i){
-                    case 0:
-                        $directionX = 1;
-                        $directionY = 1;
-                        $posX = $x + $directionX;
-                        $posY = $y + $directionY;
-                    
-                    
-                        while($posX >= 0 && $posX < 8 && $posY >= 0 && $posY < 8) {
-                            if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
-                                break;
-                            } else {
-                                array_push($moves, [$posX, $posY]);
-                                $posX += $directionX;
-                                $posY += $directionY;
-                            }
-
-                        }
-                    break;
-                    case 1:
-                        $directionX = 1;
-                        $directionY = -1;
-                        $posX = $x + $directionX;
-                        $posY = $y + $directionY;
-                    
-                    
-                        while($posX >= 0 && $posX < 8 && $posY >= 0 && $posY < 8) {
-                            if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
-                                break;
-                            } else {
-                                array_push($moves, [$posX, $posY]);
-                                $posX += $directionX;
-                                $posY += $directionY;
-                            }
-                        }
-                    break;
-                    case 2:
-                        $directionX = -1;
-                        $directionY = 1;
-                        $posX = $x + $directionX;
-                        $posY = $y + $directionY;
-                    
-                    
-                        while($posX >= 0 && $posX < 8 && $posY >= 0 && $posY < 8) {
-                            if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
-                                break;
-                            } else {
-                                array_push($moves, [$posX, $posY]);
-                                $posX += $directionX;
-                                $posY += $directionY;
-                            }
-                        }
-                    break;
-                    case 3:
-                        $directionX = -1;
-                        $directionY = -1;
-                        $posX = $x + $directionX;
-                        $posY = $y + $directionY;
-                    
-                    
-                        while($posX >= 0 && $posX < 8 && $posY >= 0 && $posY < 8) {
-                            if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
-                                break;
-                            } else {
-                                array_push($moves, [$posX, $posY]);
-                                $posX += $directionX;
-                                $posY += $directionY;
-                            }
-                        }
-                    break;
-                }
-            }
-            return $moves;
-            break;
-        default:
-        return false;
-    }
-}
+function getValidCoordinatesForQueen($kindOfMove, $x, $y, $dataGrid){}
 
 function checkKindOfMove($oldX, $oldY, $newX, $newY){
     if($newX == $oldX && $newY != $oldY){
@@ -540,7 +363,6 @@ function createDataGridForJSON(){
 
 //---------------------------------------------------------------
 
-//$whiteFigures = ["U+2656", "U+2658", "U+2657", "U+2655", "U+2654", "U+2657", "U+2658", "U+2656"];
 if(file_exists("dataGrid.json")){
     $dataGrid = json_decode(file_get_contents("dataGrid.json"), true);
 } else {
@@ -558,24 +380,6 @@ if(isset($_POST["submit"])){
         saveDataGrid($dataGrid);
     }
 }
-
-/*
-
-        [-2,-3,-4,-5,-6,-4,-3,-2],
-        [-1,-1,-1,-1,-1,-1,-1,-1],
-        [0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0],
-        [4,0,0,0,4,0,0,0],
-        [1,4,1,4,1,1,1,1],
-        [2,3,4,5,6,4,3,2],
-
-
-
-*/
-
-//$dataGrid = moveFigure(3, 6, 3, 4, $dataGrid);
-
 ?>
 
 <html>
