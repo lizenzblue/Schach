@@ -17,6 +17,7 @@ function writeToDataGrid($x, $y, $figure){
 4 = Springer
 5 = Dame
 6 = König
+test
 */ 
 
 function getFigureCodeByNumber($number) {
