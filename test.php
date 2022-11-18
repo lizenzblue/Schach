@@ -82,7 +82,7 @@ function moveFigure($oldX, $oldY, $newX, $newY, $dataGrid){
 
 function checkIfFigurIsInWay($posX, $posY, $dataGrid){
     $fieldValue = $dataGrid[$posY][$posX];
-    if($fieldValue != 0){
+    if($fieldValue != 0 && $fieldValue != 3 && $fieldValue != -3){
         return true;
     } else {
         return false;
@@ -96,6 +96,11 @@ function checkIfRequestedMoveIsInAllowedMoves($requestedMove, $allowedMoves){
         return false;
     }
 }
+
+function getFieldValue($x, $y, $dataGrid){
+    $fieldValue = $dataGrid[$y][$x];
+    return $fieldValue;
+}
 //---------------------------------------------------------------
 
 function validation($oldX, $oldY, $newX, $newY, $dataGrid){
@@ -104,13 +109,10 @@ function validation($oldX, $oldY, $newX, $newY, $dataGrid){
     } else {
         $fieldValue = $dataGrid[$oldY][$oldX];
         $moveToFieldValue = $dataGrid[$newY][$newX];
-        if($moveToFieldValue > 0 || $moveToFieldValue < 0){
-            return false;
-        } else {
             switch($fieldValue){
                 case 1:
                 case -1:
-                    if(bauerMoveValid($oldY, $newY, $fieldValue) == true){
+                    if(bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid) == true){
                         return true;
                     } else {return false;}
                 break;
@@ -137,130 +139,72 @@ function validation($oldX, $oldY, $newX, $newY, $dataGrid){
                     if(queenMoveValid($oldX, $oldY, $newX, $newY, $dataGrid) == true){
                         return true;
                     } else {return false;}
-            }
+            
         }
     }
 }
 
-function bauerMoveValid($oldX, $oldY,$dataGrid){
+function bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
+    $moveVector = [[0,1], [0,-1], [0,2],[0,-2]];
     $possibleMoves = [];
-    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, 0, 1 ,$dataGrid, true));
-}
-
-function getValidCoordinatesForTurm($kindOfMove, $x, $y, $dataGrid){
- 
-}
-
-function turmMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
-    if($oldX == $newX && $oldY != $newY){
-        $moves = getValidCoordinatesForTurm(2, $oldX, $oldY, $dataGrid);
-        $requestedMove = [$newX, $newY];
-        return checkIfRequestedMoveIsInAllowedMoves($requestedMove, $moves);
-    } elseif($oldX != $newX && $oldY == $newY){
-        $moves = getValidCoordinatesForTurm(1, $oldX, $oldY, $dataGrid);
-        $requestedMove = [$newX, $newY];
-        return checkIfRequestedMoveIsInAllowedMoves($requestedMove, $moves);
+    $requestedMove = [$newX, $newY];
+    $fieldValue = getFieldValue($oldX, $oldY, $dataGrid);
+    if($fieldValue == 1){
+       if($oldY == 6){
+        $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, $moveVector[3] ,$dataGrid, true));
+        $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, $moveVector[1] ,$dataGrid, true));
+       } else {
+        $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, $moveVector[1] ,$dataGrid, true));
+       }
+    } elseif($fieldValue == -1) {
+        if($oldY == 1){
+            $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, $moveVector[2] ,$dataGrid, true));
+            $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, $moveVector[2] ,$dataGrid, true));
+           } else {
+            $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, $moveVector[0] ,$dataGrid, true));
+        }
     } else {
         return false;
     }
+    return checkIfRequestedMoveIsInAllowedMoves($requestedMove, $possibleMoves);
+}
+
+
+function turmMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
+    $moveVector = [[0,1],[0,-1],[1,0],[-1,0]];
+    $requestedMove = [$newX,$newY];
+    return checkIfRequestedMoveIsInAllowedMoves($requestedMove, getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, false));
 }
 
 function reiterMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
-    $directions = [[1,2],[-1,2],[1,-2],[-1,2]];
+    $moveVector = [[1,2],[-1,2],[1,-2],[-1,-2], [-2, 1], [-2,-1], [2, 1], [2, -1]];
+    $requestedMove = [$newX, $newY];
+    return checkIfRequestedMoveIsInAllowedMoves($requestedMove, getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, true));
+}
+
+function bishopMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
+    $moveVector = [[1,1],[1,-1],[-1,-1],[-1,1]];
+    $requestedMove = [$newX,$newY];
+    return checkIfRequestedMoveIsInAllowedMoves($requestedMove, getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, false));
+}
+
+function queenMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
+    $moveVector = [[1,1],[1,-1],[-1,-1],[-1,1],[0,1],[0,-1],[1,0],[-1,0]];
+    $requestedMove = [$newX,$newY];
+    return checkIfRequestedMoveIsInAllowedMoves($requestedMove, getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, false));
+}
+
+function getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, $oneTimeOnly){
     $possibleMoves = [];
-    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, 1, 2 ,$dataGrid, true));
-    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, -1, 2 ,$dataGrid, true));
-    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, 1, -2 ,$dataGrid, true));
-    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, -1, -2 ,$dataGrid, true));
-    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, -2, 1 ,$dataGrid, true));
-    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, -2, -1 ,$dataGrid, true));
-    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, 2, 1 ,$dataGrid, true));
-    $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, 2, -1 ,$dataGrid, true));
-    file_put_contents("reiter.json", json_encode($possibleMoves));
-}
-
-
-/*
-
-fn requestmove(figure, oldx, oldy, newx, newy)
-    checks which figure should move and declairs 
-    $directionX
-    $directionY
-    calls function that checks for possible moves
-    possible = checkForPossibleMoves(figure, x, y, directionX, directionY)
-
-fn checkForPossibleMoves(figure, x, y, directionX, directionY)
-    switch(figure)y
-
-
-fn calculatePossibleMovesDiagonal($x, $y, $directionX, $directionY)
-    $posX = $x + $directionX;
-    $posY = $y + $directionY;
-
-    $moves = [];
-
-    while($posX >= 0 && $posX < 8 && $posY >= 0 && $posY < 8) {
-        if(checkIfFigurIsInWay($posX, $posY, $dataGrid) == true){
-            break;
-        } else {
-            $moves[] = [$posX, $posY];
-            $posX += $directionX;
-            $posY += $directionY;
-        }
-    }    
-
-    return $moves;
-
-fn calculatePossibleMovesStraight($x, $y, $directionX, $directionY)
-
-*/
-
-function calculatePossibleMovesStraight($x, $y, $whatToCalculate, $dataGrid){
-    $moves = [];
-    $direction = 1;
-    if($whatToCalculate == "x"){
-        for($i = 0; $i < 2; $i++){
-            //$moves = array_merge($moves, calculateMoves($x, $y, $direction, 0, $dataGrid));
-            $direction = $direction * -1;
-        }
-    } elseif($whatToCalculate == "y"){
-        for($i = 0; $i < 2; $i++){
-            //$moves = array_merge($moves, calculateMoves($x, $y, 0, $direction, $dataGrid));
-            $direction = $direction * -1;
-        }
-    } else {
-        for($i = 0; $i < 4; $i++){
-            if($i < 2){
-                //$moves = array_merge($moves, calculateMoves($x, $y, $direction, 0, $dataGrid));
-                $direction = $direction * -1;
-            } elseif($i >= 2){
-                //$moves = array_merge($moves, calculateMoves($x, $y, 0, $direction, $dataGrid));
-                $direction = $direction * -1;
-            }
-        }
+    foreach($moveVector as $value => $key){
+        $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, $key ,$dataGrid, $oneTimeOnly));
     }
-    return $moves;
+    return $possibleMoves;
 }
 
-function calculatePossibleMovesDiagonal($x, $y, $dataGrid){
-    $directions = [-1,-1,1,1,1,-1,-1,1];
-    $inArrayX = 0;
-    $inArrayY = 1;
-    $moves = [];
-    // mit dem for Loop werden alle Richtungen durchgegangen
-    for($i = 0; $i < 4; $i++){
-        $directionX = $directions[$inArrayX];
-        $directionY = $directions[$inArrayY];
-        //$moves = array_merge($moves, calculateMoves($x, $y, $directionX, $directionY, $dataGrid));
-        $directionX += 2;
-        $directionY += 2;
-    }
-    return $moves;
-}
-
-function calculateMoves($x, $y, $directionX, $directionY ,$dataGrid, $oneTimeOnly = false){
-    $posX = $x + $directionX;
-    $posY = $y + $directionY;
+function calculateMoves($x, $y, $directionVector ,$dataGrid, $oneTimeOnly = false){
+    $posX = $x + $directionVector[0];
+    $posY = $y + $directionVector[1];
     $possibleMoves = [];
 
     while($posX >= 0 && $posX < 8 && $posY >= 0 && $posY < 8) {
@@ -268,8 +212,8 @@ function calculateMoves($x, $y, $directionX, $directionY ,$dataGrid, $oneTimeOnl
                 break;
         } else {
             $possibleMoves[] = [$posX, $posY];
-            $posX += $directionX;
-            $posY += $directionY;
+            $posX += $directionVector[0];
+            $posY += $directionVector[1];
         }
 
         if ($oneTimeOnly) {
@@ -278,34 +222,6 @@ function calculateMoves($x, $y, $directionX, $directionY ,$dataGrid, $oneTimeOnl
     }
     return $possibleMoves;    
 }
-
-
-function bishopMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
-    $moves = calculatePossibleMovesDiagonal($oldX, $oldY, $dataGrid);
-    $requestedMove = [$newX, $newY];
-    return checkIfRequestedMoveIsInAllowedMoves($requestedMove, $moves);
-}
-
-function getValidCoordinatesForQueen($kindOfMove, $x, $y, $dataGrid){}
-
-function checkKindOfMove($oldX, $oldY, $newX, $newY){
-    if($newX == $oldX && $newY != $oldY){
-        return 1;
-    } elseif($newX != $oldX && $newY == $oldY){
-        return 2;
-    } elseif($newX != $oldX && $newY != $oldY){
-        return 3;
-    } else {
-        return 4;
-    }
-}
-
-function queenMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
-    $moves = getValidCoordinatesForQueen(checkKindOfMove($oldX, $oldY, $newX, $newY), $oldX, $oldY, $dataGrid);
-    $requestedMove = [$newX, $newY];
-    return checkIfRequestedMoveIsInAllowedMoves($requestedMove, $moves);
-}
-
 
 //---------------------------------------------------------------
 
