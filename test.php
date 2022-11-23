@@ -99,6 +99,11 @@ function getFieldValue($x, $y, $dataGrid){
     $fieldValue = $dataGrid[$y][$x];
     return $fieldValue;
 }
+
+function getRequestMove($y, $x){
+    $requestMoce = [$y, $x];
+    return  $requestMoce;
+}
 //---------------------------------------------------------------
 
 function validation($oldX, $oldY, $newX, $newY, $dataGrid){
@@ -137,6 +142,11 @@ function validation($oldX, $oldY, $newX, $newY, $dataGrid){
                     if(queenMoveValid($oldX, $oldY, $newX, $newY, $dataGrid) == true){
                         return true;
                     } else {return false;}
+                case 6:
+                case -6:
+                if(königMoveValid($oldX, $oldY, $newX, $newY, $dataGrid) == true){
+                    return true;
+                } else {return false;}
             
         }
     }
@@ -167,29 +177,29 @@ function bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
     return checkIfRequestedMoveIsInAllowedMoves($requestedMove, $possibleMoves);
 }
 
+function königMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
+    $moveVector = [[0,1], [0,-1], [0,2],[0,-2], [1,1], [1,-1], [-1,-1], [-1,1]];
+    return checkIfRequestedMoveIsInAllowedMoves(getRequestMove($newY, $newX), getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, true));
+}
 
 function turmMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
     $moveVector = [[0,1],[0,-1],[1,0],[-1,0]];
-    $requestedMove = [$newX,$newY];
-    return checkIfRequestedMoveIsInAllowedMoves($requestedMove, getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, false));
+    return checkIfRequestedMoveIsInAllowedMoves(getRequestMove($newY, $newX), getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, false));
 }
 
 function reiterMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
     $moveVector = [[1,2],[-1,2],[1,-2],[-1,-2], [-2, 1], [-2,-1], [2, 1], [2, -1]];
-    $requestedMove = [$newX, $newY];
-    return checkIfRequestedMoveIsInAllowedMoves($requestedMove, getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, true));
+    return checkIfRequestedMoveIsInAllowedMoves(getRequestMove($newY, $newX), getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, true));
 }
 
 function bishopMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
     $moveVector = [[1,1],[1,-1],[-1,-1],[-1,1]];
-    $requestedMove = [$newX,$newY];
-    return checkIfRequestedMoveIsInAllowedMoves($requestedMove, getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, false));
+    return checkIfRequestedMoveIsInAllowedMoves(getRequestMove($newY, $newX), getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, false));
 }
 
 function queenMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
     $moveVector = [[1,1],[1,-1],[-1,-1],[-1,1],[0,1],[0,-1],[1,0],[-1,0]];
-    $requestedMove = [$newX,$newY];
-    return checkIfRequestedMoveIsInAllowedMoves($requestedMove, getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, false));
+    return checkIfRequestedMoveIsInAllowedMoves(getRequestMove($newY, $newX), getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, false));
 }
 
 function getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, $oneTimeOnly){
