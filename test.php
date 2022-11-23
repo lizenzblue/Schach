@@ -69,8 +69,6 @@ function generateHTML($dataGrid){
         }
         echo '</div>';
     }
-    //echo '<script src="./index.js"></script>';
-    //echo '<script>addEventlistenertoObjects();</script>';
 }
 
 function moveFigure($oldX, $oldY, $newX, $newY, $dataGrid){ 
