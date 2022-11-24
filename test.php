@@ -165,7 +165,7 @@ function bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
         $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, $moveVector[1] ,$dataGrid, true));
        }
     } elseif($fieldValue == -1) {
-        if($oldY == 1){
+        if($oldY == 1){       
             $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, $moveVector[2] ,$dataGrid, true));
             $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, $moveVector[2] ,$dataGrid, true));
           } else {
