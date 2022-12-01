@@ -5,11 +5,6 @@ function saveDataGrid($contentForJSON){
     file_put_contents("dataGrid.json", $finalData);
 }
 
-function writeToDataGrid($x, $y, $figure){
-    $dataGrid[$x][$y] = $figure;
-    saveDataGrid($dataGrid);
-}
-
 /*
 1 = Bauer
 2 = Turm
@@ -38,10 +33,6 @@ function getFigureCodeByNumber($number) {
     return $figures[$number];
 }
 
-function placeFigures($arrayPos, $figurType){
-    $htmlElement = '<div class="figureWhite">'. $figurType[$arrayPos] .'</div>';
-    return $htmlElement;
-}
 
 function colorPlayfield($x, $y){
     if ($y % 2 == 0 && $x % 2 == 0) {
@@ -95,6 +86,13 @@ function checkIfFigurIsInWay($posX, $posY, $dataGrid, $figureValue){
     }
 }
 
+function check($newX, $newY, $dataGrid){
+    $enemypieces = getAllPiecesOfColor(getCurrentColor() * -1, $dataGrid);
+    foreach ($enemypieces as $key => $value){
+        fancy_dump($value);
+        fancy_dump($key);
+    }
+}
 
 function checkIfRequestedMoveIsInAllowedMoves($requestedMove, $allowedMoves){
     if(in_array($requestedMove, $allowedMoves)){
@@ -104,19 +102,6 @@ function checkIfRequestedMoveIsInAllowedMoves($requestedMove, $allowedMoves){
     }
 }
 
-function checkIfFieldIsUnderAttack($oldX, $oldY, $newX, $newY, $dataGrid, $figureValue){
-    $characterMoves = [];
-    for($i = 0; $i < count($dataGrid); $i++){
-        for($j = 0; $j < count($dataGrid[0]); $j++){
-            $fieldValue = $dataGrid[$i][$j];
-            if($figureValue > 0 && $fieldValue < 0){
-            }
-        }
-    }
-}
-    //file_put_contents("underAttack.json", json_encode($characterMoves));
-
-
 function getFieldValue($x, $y, $dataGrid){
     $fieldValue = $dataGrid[$y][$x];
     return $fieldValue;
@@ -124,54 +109,124 @@ function getFieldValue($x, $y, $dataGrid){
 
 function getRequestMove($x, $y){
     $requestMove = [$x, $y];
-    return $requestMove;              
+    return $requestMove;
 }
 //---------------------------------------------------------------
 
 function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false){
-    if($newX > 7 || $newX < 0 || $newY > 7 || $newY < 0){
+
+    if($newX > 7 && $newX < 0 && $newY > 7 && $newY < 0){
+        return false;
+    }
+
+    $absoluteFieldValue = abs($dataGrid[$oldY][$oldX]);
+    $onlyOneTime = false;
+    $allFigureMoveVectors = [
+            [[0,1],[0,-1],[1,0],[-1,0]], // Turm
+            [[1,2],[-1,2],[1,-2],[-1,-2], [-2, 1], [-2,-1], [2, 1], [2, -1]], //Bishop
+            [[1,2],[-1,2],[1,-2],[-1,-2], [-2, 1], [-2,-1], [2, 1], [2, -1]], // Reiter
+            [[1,1],[1,-1],[-1,-1],[-1,1]], // Bishop
+            [[1,1],[1,-1],[-1,-1],[-1,1],[0,1],[0,-1],[1,0],[-1,0]] // queen
+        ];
+
+    switch ($absoluteFieldValue) {
+        case 1:
+            if(bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid)  ){
+                return true;
+            }
+            return false;
+        case 6:
+            if(koenigMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove)){
+                return true;
+            }
+            return false;
+        /*case 3:
+            $onlyOneTime = true;*/
+        default:
+            if($absoluteFieldValue == 3){
+                $onlyOneTime = true;
+            }
+            if(moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $allFigureMoveVectors[$absoluteFieldValue - 1])){
+                return true;
+            }
+            return false;
+    }
+
+//--------------------SPECIAL CASES------------------------------
+    /*if($fieldValue == 3 || $fieldValue == -3){
+        $onlyOneTime = true;
+    }
+    if($fieldValue < 0){
+        $fieldValue = $fieldValue * -1;
+    }
+    if($fieldValue == 1 || $fieldValue == -1){
+        if(bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid)  ){
+            return true;
+        }
+        return false;
+     } elseif ($fieldValue == 6 || $fieldValue == -6){
+        if(koenigMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove)){
+            return true;
+        }
+        return false;
+    }
+//------------------------------------------------------------------
+
+    if($newX < 7 && $newX > 0 && $newY < 7 && $newY > 0){
+        if(moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $allFigureMoveVectors[$fieldValue - 1])){
+            return true;
+        }
+        return false;
+    }*/
+
+ /*   if($newX > 7 || $newX < 0 || $newY > 7 || $newY < 0){
         return false;
     } else {
-        $fieldValue = $dataGrid[$oldY][$oldX];
             switch($fieldValue){
                 case 1:
                 case -1:
                     if(bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid)  ){
                         return true;
-                    } else {return false;}
-                break;
+                    }
+                    return false;
                 case 2:
                 case -2:
-                    if(turmMoveValid($oldX, $oldY, $newX, $newY, $dataGrid)){
+                    $moveVectorsTurm = [[0,1],[0,-1],[1,0],[-1,0]];
+                    if(moveValid($oldX, $oldY, $newX, $newY, $dataGrid, true, $moveVectorsTurm)){
                         return true;
-                    } else {return false;}
-                break;
+                    }
+                    return false;
                 case 3:
                 case -3:
-                    if(reiterMoveValid($oldX, $oldY, $newX, $newY, $dataGrid)){
+                    $moveVectorsReiter = [[1,2],[-1,2],[1,-2],[-1,-2], [-2, 1], [-2,-1], [2, 1], [2, -1]];
+                    if(moveValid($oldX, $oldY, $newX, $newY, $dataGrid, true, $moveVectorsReiter)){
                         return true;
-                    } else {return false;}
-                break;
+                    }
+                    return false;
                 case 4:
                 case -4:
-                    if(bishopMoveValid($oldX, $oldY, $newX, $newY, $dataGrid)){
+                    $moveVectorsBishop = [[1,1],[1,-1],[-1,-1],[-1,1]];
+                    if(moveValid($oldX, $oldY, $newX, $newY, $dataGrid, false, $moveVectorsBishop)){
                         return true;
-                    } else {return false;}
-                break;
+                    }
+                    return false;
                 case 5:
                 case -5:
-                    if(queenMoveValid($oldX, $oldY, $newX, $newY, $dataGrid)){
+                    $moveVectorsQueen = [[1,1],[1,-1],[-1,-1],[-1,1],[0,1],[0,-1],[1,0],[-1,0]];
+                    if(moveValid($oldX, $oldY, $newX, $newY, $dataGrid, false, $moveVectorsQueen)){
                         return true;
-                    } else {return false;}
+                    }
+                    return false;
                 case 6:
                 case -6:
-
+                    check($newX, $newY, $dataGrid);
                 if(koenigMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove)){
                     return true;
-                } else {return false;}
-            
-        }
-    }
+                }
+                return false;
+
+            }
+    } */
 }
 
 function bauernThow($x, $y, $throwMoveVectors, $dataGrid, $color){
@@ -186,7 +241,6 @@ function bauernThow($x, $y, $throwMoveVectors, $dataGrid, $color){
         $possibelThrows[] = $possibelThrow;
     }
     return $possibelThrows;
-    //return type array
 }
 
 function bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
@@ -194,7 +248,6 @@ function bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
     $throwMoveVectorsBlack = [[1,1],[-1,1]];
     $throwMoveVectorsWhite = [[1,-1],[-1,-1]];
     $possibleMoves = [];
-    $throwMoves = [];
     $requestMoves = [$newX, $newY];
     $fieldValue = getFieldValue($oldX, $oldY, $dataGrid);
     if($fieldValue == 1){
@@ -235,41 +288,9 @@ function koenigMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove){
     return checkIfRequestedMoveIsInAllowedMoves($requestMoves, $possibleMoves);
 }
 
-function moveValid($oldX, $oldY, $newX, $newY, $dataGrid){
-
+function moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $moveVectors){
+    return checkIfRequestedMoveIsInAllowedMoves(getRequestMove($newX, $newY), getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVectors, $onlyOneTime));
 }
-function turmMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
-    $moveVector = [[0,1],[0,-1],[1,0],[-1,0]];
-    return checkIfRequestedMoveIsInAllowedMoves(getRequestMove($newX, $newY), getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, false));
-}
-
-function reiterMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
-    $moveVector = [[1,2],[-1,2],[1,-2],[-1,-2], [-2, 1], [-2,-1], [2, 1], [2, -1]];
-    return checkIfRequestedMoveIsInAllowedMoves(getRequestMove($newX, $newY), getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, true));
-}
-
-function bishopMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
-    $moveVector = [[1,1],[1,-1],[-1,-1],[-1,1]];
-    return checkIfRequestedMoveIsInAllowedMoves(getRequestMove($newX, $newY), getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, false));
-}
-
-function queenMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
-    $moveVector = [[1,1],[1,-1],[-1,-1],[-1,1],[0,1],[0,-1],[1,0],[-1,0]];
-    return checkIfRequestedMoveIsInAllowedMoves(getRequestMove($newX, $newY), getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, false));
-}
-
-/*
-    $pieces = [
-        [
-            "x" => 1,
-            "y" => 2
-        ],
-        [
-            "x" => 2,
-            "y" => 2
-        ]
-    ]
-*/
 
 function isUnderAttack($targets, $grid, $enemyPieces) {
     $targetX = $targets[0];
@@ -306,7 +327,6 @@ function getAllPiecesOfColor($color, $dataGrid) {
             }
         }
     }
-
     return $pieces;
 }
 
@@ -323,7 +343,6 @@ function calculateMoves($x, $y, $directionVector ,$dataGrid, $oneTimeOnly = fals
     $posY = $y + $directionVector[1];
     $possibleMoves = [];
     $figureValue = $dataGrid[$x][$y];
-
     while($posX >= 0 && $posX < 8 && $posY >= 0 && $posY < 8) {
         if(checkIfFigurIsInWay($posX, $posY, $dataGrid, $figureValue) == true){
                 break;
@@ -332,7 +351,6 @@ function calculateMoves($x, $y, $directionVector ,$dataGrid, $oneTimeOnly = fals
             $posX += $directionVector[0];
             $posY += $directionVector[1];
         }
-
         if ($oneTimeOnly == true) {
             break;
         }
@@ -352,25 +370,20 @@ function fancy_dump($var) {
         $typeOfVar = gettype($var);
         echo '<pre>' . $var . ' &#8594; ' . $typeOfVar . '</pre>';
     }
-
     echo '</div>';
 }
 
 function array_dump($array) {
     echo '<ul>';
-
     foreach($array as $key => $value) {
         echo '<li>';
-
         if (is_array($value)) {
             echo array_dump($value);
         } else {
             echo $value;
         }
-
         echo '</li>';
     }
-
     echo '</ul>';
 }
 
@@ -387,26 +400,15 @@ function createDataGridForJSON(){
         [1,1,1,1,1,1,1,1],
         [2,3,4,5,6,4,3,2],
     ];
-
     $dataGrid = [
         [0,0,0,0,-6,0,0,0],
         [0,0,0,0,0,0,0,0],
-        [0,0,0,0,6,0,0,0],
+        [0,0,0,0,1,0,0,0],
+        [0,0,0,0,0,3,0,0],
         [0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0],
-    ];
-    $dataGrid = [
-        [-2,-3,-4,-5,-6,-4,-3,-2],
-        [-1,-1,-1,-1,-1,-1,-1,-1],
-        [0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0],
-        [0,0,-1,0,0,0,0,0],
-        [0,1,0,0,0,0,0,0],
-        [1,1,1,1,1,1,1,1],
-        [2,3,4,5,6,4,3,2],
     ];
     file_put_contents("dataGrid.json", json_encode($dataGrid));
     return $dataGrid;
@@ -451,7 +453,7 @@ if(isset($_POST["submit"])){
         if(validation($inputs[0], $inputs[1], $inputs[2], $inputs[3], $dataGrid)){
             $dataGrid = moveFigure($inputs[0], $inputs[1], $inputs[2], $inputs[3], $dataGrid);
             saveDataGrid($dataGrid);
-            $color = $color * - 1;
+            $color = $color * -1;
             file_put_contents("currentColor.json", json_encode($color));
         } else {
             $error = 'Figurenzug ist nicht valide!';
