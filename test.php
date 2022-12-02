@@ -87,11 +87,18 @@ function checkIfFigurIsInWay($posX, $posY, $dataGrid, $figureValue){
 }
 
 function check($newX, $newY, $dataGrid){
-    $enemypieces = getAllPiecesOfColor(getCurrentColor() * -1, $dataGrid);
-    foreach ($enemypieces as $key => $value){
-        fancy_dump($value);
-        fancy_dump($key);
-    }
+    $coords = [$newX, $newY];
+    $color = getCurrentColor();
+    $enemypieces = getAllPiecesOfColor( $color * -1, $dataGrid);
+        if(isUnderAttack($coords, $dataGrid, $enemypieces)){
+            if($color == 1){
+                echo "Black King check";
+            } else {
+                echo "White King check";
+            }
+            return true;
+        }
+    return false;
 }
 
 function checkIfRequestedMoveIsInAllowedMoves($requestedMove, $allowedMoves){
@@ -122,11 +129,10 @@ function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false
     $absoluteFieldValue = abs($dataGrid[$oldY][$oldX]);
     $onlyOneTime = false;
     $allFigureMoveVectors = [
-            [[0,1],[0,-1],[1,0],[-1,0]], // Turm
-            [[1,2],[-1,2],[1,-2],[-1,-2], [-2, 1], [-2,-1], [2, 1], [2, -1]], //Bishop
-            [[1,2],[-1,2],[1,-2],[-1,-2], [-2, 1], [-2,-1], [2, 1], [2, -1]], // Reiter
-            [[1,1],[1,-1],[-1,-1],[-1,1]], // Bishop
-            [[1,1],[1,-1],[-1,-1],[-1,1],[0,1],[0,-1],[1,0],[-1,0]] // queen
+          2 =>  [[0,1],[0,-1],[1,0],[-1,0]], // Turm
+          3 =>  [[1,2],[-1,2],[1,-2],[-1,-2], [-2, 1], [-2,-1], [2, 1], [2, -1]], // Reiter
+          4 =>  [[1,1],[1,-1],[-1,-1],[-1,1]], // Bishop
+          5 =>  [[1,1],[1,-1],[-1,-1],[-1,1],[0,1],[0,-1],[1,0],[-1,0]] // queen
         ];
 
     switch ($absoluteFieldValue) {
@@ -140,93 +146,19 @@ function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false
                 return true;
             }
             return false;
-        /*case 3:
-            $onlyOneTime = true;*/
+        case 3:
+            $onlyOneTime = true;
+            // break fehlt, weil der Reiter ein special case ist und $onlyOneTime nur für ihn veraendert werden muss
+            // PS: Idee kam von Ralf
         default:
             if($absoluteFieldValue == 3){
                 $onlyOneTime = true;
             }
-            if(moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $allFigureMoveVectors[$absoluteFieldValue - 1])){
+            if(moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $allFigureMoveVectors[$absoluteFieldValue])){
                 return true;
             }
             return false;
     }
-
-//--------------------SPECIAL CASES------------------------------
-    /*if($fieldValue == 3 || $fieldValue == -3){
-        $onlyOneTime = true;
-    }
-    if($fieldValue < 0){
-        $fieldValue = $fieldValue * -1;
-    }
-    if($fieldValue == 1 || $fieldValue == -1){
-        if(bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid)  ){
-            return true;
-        }
-        return false;
-     } elseif ($fieldValue == 6 || $fieldValue == -6){
-        if(koenigMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove)){
-            return true;
-        }
-        return false;
-    }
-//------------------------------------------------------------------
-
-    if($newX < 7 && $newX > 0 && $newY < 7 && $newY > 0){
-        if(moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $allFigureMoveVectors[$fieldValue - 1])){
-            return true;
-        }
-        return false;
-    }*/
-
- /*   if($newX > 7 || $newX < 0 || $newY > 7 || $newY < 0){
-        return false;
-    } else {
-            switch($fieldValue){
-                case 1:
-                case -1:
-                    if(bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid)  ){
-                        return true;
-                    }
-                    return false;
-                case 2:
-                case -2:
-                    $moveVectorsTurm = [[0,1],[0,-1],[1,0],[-1,0]];
-                    if(moveValid($oldX, $oldY, $newX, $newY, $dataGrid, true, $moveVectorsTurm)){
-                        return true;
-                    }
-                    return false;
-                case 3:
-                case -3:
-                    $moveVectorsReiter = [[1,2],[-1,2],[1,-2],[-1,-2], [-2, 1], [-2,-1], [2, 1], [2, -1]];
-                    if(moveValid($oldX, $oldY, $newX, $newY, $dataGrid, true, $moveVectorsReiter)){
-                        return true;
-                    }
-                    return false;
-                case 4:
-                case -4:
-                    $moveVectorsBishop = [[1,1],[1,-1],[-1,-1],[-1,1]];
-                    if(moveValid($oldX, $oldY, $newX, $newY, $dataGrid, false, $moveVectorsBishop)){
-                        return true;
-                    }
-                    return false;
-                case 5:
-                case -5:
-                    $moveVectorsQueen = [[1,1],[1,-1],[-1,-1],[-1,1],[0,1],[0,-1],[1,0],[-1,0]];
-                    if(moveValid($oldX, $oldY, $newX, $newY, $dataGrid, false, $moveVectorsQueen)){
-                        return true;
-                    }
-                    return false;
-                case 6:
-                case -6:
-                    check($newX, $newY, $dataGrid);
-                if(koenigMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove)){
-                    return true;
-                }
-                return false;
-
-            }
-    } */
 }
 
 function bauernThow($x, $y, $throwMoveVectors, $dataGrid, $color){
@@ -311,10 +243,11 @@ function getAllPiecesOfColor($color, $dataGrid) {
         for($j = 0; $j < count($dataGrid[0]); $j++){
             $fieldValue = $dataGrid[$i][$j];
             if($color == 1){
-                if ($fieldValue > 0 && $color > 0) {
+                if ($fieldValue > 0) {
                     $pieces[] = [
                         "x" => $j,
                         "y" => $i,
+                        "fieldValue" => $fieldValue,
                     ];
                 }
             } else {
@@ -322,6 +255,7 @@ function getAllPiecesOfColor($color, $dataGrid) {
                     $pieces[] = [
                         "x" => $j,
                         "y" => $i,
+                        "fieldValue" => $fieldValue,
                     ];
                 }
             }
@@ -449,7 +383,7 @@ if(isset($_POST["submit"])){
     }
 
     $piecesOfColor = getAllPiecesOfColor($color, $dataGrid);
-    if (isCoordinateInPieces($inputs[0], $inputs[1], $piecesOfColor)) {
+    if($dataGrid[$inputs[1]][$inputs[0]] > 0 && $color > 0 || $dataGrid[$inputs[1]][$inputs[0]] < 0 && $color < 0){
         if(validation($inputs[0], $inputs[1], $inputs[2], $inputs[3], $dataGrid)){
             $dataGrid = moveFigure($inputs[0], $inputs[1], $inputs[2], $inputs[3], $dataGrid);
             saveDataGrid($dataGrid);
