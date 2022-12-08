@@ -71,6 +71,8 @@ function moveFigure($oldX, $oldY, $newX, $newY, $dataGrid){
 
 function checkIfFigurIsInWay($posX, $posY, $dataGrid, $figureValue){
     $fieldValue = $dataGrid[$posY][$posX];
+    //fancy_dump($fieldValue);
+    //fancy_dump($figureValue);
     if($figureValue > 0){
         if($fieldValue > 0 && $fieldValue != 3){
             return true;
@@ -78,7 +80,7 @@ function checkIfFigurIsInWay($posX, $posY, $dataGrid, $figureValue){
             return false;
         }
     } elseif($figureValue < 0){
-        if($fieldValue > 0 && $fieldValue != -3){
+        if($fieldValue < 0 && $fieldValue != -3){
             return true;
         } else {
             return false;
@@ -86,18 +88,26 @@ function checkIfFigurIsInWay($posX, $posY, $dataGrid, $figureValue){
     }
 }
 
-function check($newX, $newY, $dataGrid){
-    $coords = [$newX, $newY];
-    $color = getCurrentColor();
-    $enemypieces = getAllPiecesOfColor( $color * -1, $dataGrid);
-        if(isUnderAttack($coords, $dataGrid, $enemypieces)){
-            if($color == 1){
-                echo "Black King check";
-            } else {
-                echo "White King check";
-            }
-            return true;
+function check($coords, $dataGrid, $color){
+    $enemyPieces = getAllPiecesOfColor($color, $dataGrid);
+    if(isUnderAttack($coords, $dataGrid, $enemyPieces)){
+        if($color == 1){
+            echo "Black King check";
+        } else {
+            echo "White King check";
         }
+            return true;
+    }
+    return false;
+}
+
+function checkMate($posKing, $dataGrid){
+    $moveVectors = [[0,1],[0,-1],[1,0],[-1,0], [1,1], [1,-1], [-1,-1], [-1,1]];
+    $possibleMoves = getPossibleMovesWithVector($posKing[0], $posKing[1], $dataGrid, $moveVectors, true);
+    fancy_dump($possibleMoves);
+    if(empty($possibleMoves)){
+        return true;
+    }
     return false;
 }
 
@@ -120,6 +130,24 @@ function getRequestMove($x, $y){
 }
 //---------------------------------------------------------------
 
+function checkForCheckAndCheckMate($dataGrid){
+    $posKing = [];
+    $color = getCurrentColor();
+    $enemyPieces = getAllPiecesOfColor($color * -1, $dataGrid);
+    foreach($enemyPieces as $key => $enemyPiece){
+        if($enemyPiece["fieldValue"] == 6 || $enemyPiece["fieldValue"] == -6){
+            $posKing = [$enemyPiece["x"], $enemyPiece["y"]];
+        }
+    }
+    if(check($posKing, $dataGrid, $color)){
+        if(checkMate($posKing, $dataGrid)){
+            echo "CHECKMATE";
+            return true;
+        }
+    }
+    return false;
+}
+
 function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false){
 
     if($newX > 7 && $newX < 0 && $newY > 7 && $newY < 0){
@@ -137,7 +165,7 @@ function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false
 
     switch ($absoluteFieldValue) {
         case 1:
-            if(bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid)  ){
+            if(bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove)  ){
                 return true;
             }
             return false;
@@ -151,9 +179,6 @@ function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false
             // break fehlt, weil der Reiter ein special case ist und $onlyOneTime nur für ihn veraendert werden muss
             // PS: Idee kam von Ralf
         default:
-            if($absoluteFieldValue == 3){
-                $onlyOneTime = true;
-            }
             if(moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $allFigureMoveVectors[$absoluteFieldValue])){
                 return true;
             }
@@ -175,7 +200,7 @@ function bauernThow($x, $y, $throwMoveVectors, $dataGrid, $color){
     return $possibelThrows;
 }
 
-function bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
+function bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $fieldsUnderAttack){
     $moveVector = [[0,1], [0,-1], [0,2],[0,-2]];
     $throwMoveVectorsBlack = [[1,1],[-1,1]];
     $throwMoveVectorsWhite = [[1,-1],[-1,-1]];
@@ -183,16 +208,16 @@ function bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid){
     $requestMoves = [$newX, $newY];
     $fieldValue = getFieldValue($oldX, $oldY, $dataGrid);
     if($fieldValue == 1){
-        $possibleMoves = array_merge($possibleMoves, bauernThow($oldX, $oldY, $throwMoveVectorsWhite[0] ,$dataGrid, 1));
-        $possibleMoves = array_merge($possibleMoves, bauernThow($oldX, $oldY, $throwMoveVectorsWhite[1] ,$dataGrid, 1));
+        $possibleMoves = array_merge($possibleMoves, bauernThow($oldX, $oldY, $throwMoveVectorsWhite[0] ,$dataGrid, $fieldValue));
+        $possibleMoves = array_merge($possibleMoves, bauernThow($oldX, $oldY, $throwMoveVectorsWhite[1] ,$dataGrid, $fieldValue));
         if($oldY == 6){
             $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, $moveVector[3] ,$dataGrid, true));
         }
         $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, $moveVector[1] ,$dataGrid, true));
        
     } elseif($fieldValue == -1) {
-        $possibleMoves = array_merge($possibleMoves, bauernThow($oldX, $oldY, $throwMoveVectorsBlack[0] ,$dataGrid, 1));
-        $possibleMoves = array_merge($possibleMoves, bauernThow($oldX, $oldY, $throwMoveVectorsBlack[1] ,$dataGrid, 1));
+        $possibleMoves = array_merge($possibleMoves, bauernThow($oldX, $oldY, $throwMoveVectorsBlack[0] ,$dataGrid, $fieldValue));
+        $possibleMoves = array_merge($possibleMoves, bauernThow($oldX, $oldY, $throwMoveVectorsBlack[1] ,$dataGrid, $fieldValue));
         if($oldY == 1){       
             $possibleMoves = array_merge($possibleMoves, calculateMoves($oldX, $oldY, $moveVector[2] ,$dataGrid, true));
         }
@@ -276,7 +301,7 @@ function calculateMoves($x, $y, $directionVector ,$dataGrid, $oneTimeOnly = fals
     $posX = $x + $directionVector[0];
     $posY = $y + $directionVector[1];
     $possibleMoves = [];
-    $figureValue = $dataGrid[$x][$y];
+    $figureValue = $dataGrid[$y][$x];
     while($posX >= 0 && $posX < 8 && $posY >= 0 && $posY < 8) {
         if(checkIfFigurIsInWay($posX, $posY, $dataGrid, $figureValue) == true){
                 break;
@@ -335,8 +360,8 @@ function createDataGridForJSON(){
         [2,3,4,5,6,4,3,2],
     ];
     $dataGrid = [
-        [0,0,0,0,-6,0,0,0],
-        [0,0,0,0,0,0,0,0],
+        [0,0,-4,-1,-6,-1,0,0],
+        [0,0,0,0,-1,0,0,0],
         [0,0,0,0,1,0,0,0],
         [0,0,0,0,0,3,0,0],
         [0,0,0,0,0,0,0,0],
@@ -387,6 +412,7 @@ if(isset($_POST["submit"])){
         if(validation($inputs[0], $inputs[1], $inputs[2], $inputs[3], $dataGrid)){
             $dataGrid = moveFigure($inputs[0], $inputs[1], $inputs[2], $inputs[3], $dataGrid);
             saveDataGrid($dataGrid);
+            checkForCheckAndCheckMate($dataGrid);
             $color = $color * -1;
             file_put_contents("currentColor.json", json_encode($color));
         } else {
