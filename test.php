@@ -196,6 +196,7 @@ function bauerMoveCalculation($oldCoords, $newCoords, $dataGrid){
             -1 => [[1,1],[-1,1]],
              1 => [[1,-1],[-1,-1]],
     ];
+    // Test
     $throw = false;
     $possibleMoves = [];
     $color = getCurrentColor();
