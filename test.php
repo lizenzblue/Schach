@@ -165,9 +165,10 @@ function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false
 
     switch ($absoluteFieldValue) {
         case 1:
-            if(bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove)  ){
+            bauerMoveCalculation([$oldX, $oldY], [$newX, $newY], $dataGrid);
+            /*if(bauerMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove)  ){
                 return true;
-            }
+            }*/
             return false;
         case 6:
             if(koenigMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove)){
@@ -186,16 +187,42 @@ function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false
     }
 }
 
+function bauerMoveCalculation($oldCoords, $newCoords, $dataGrid){
+    $moveVectors = [
+            -1 => [[0,1], [0,2]],
+             1 => [[0,-1], [0,-2]],
+    ];
+    $throwVectors = [
+            -1 => [[1,1],[-1,1]],
+             1 => [[1,-1],[-1,-1]],
+    ];
+    $throw = false;
+    $possibleMoves = [];
+    $color = getCurrentColor();
+    if($newCoords[0] < 0 && $newCoords[0] > 7 && $newCoords[1] < 0 && $newCoords[1] > 7){
+        return false;
+    }
+    if($oldCoords[0] != $newCoords[0] && $oldCoords[1] != $newCoords[1]){
+        $throw = true;
+    }
+    if($throw){
+        $possibelThrows = bauernThow($oldCoords[0], $oldCoords[1], $throwVectors[$color], $dataGrid, $color);
+        return checkIfRequestedMoveIsInAllowedMoves($newCoords, $possibelThrows);
+    }
+}
+
 function bauernThow($x, $y, $throwMoveVectors, $dataGrid, $color){
     $possibelThrows = [];
-    $posx = $x + $throwMoveVectors[0];
-    $posy = $y + $throwMoveVectors[1];
-    $fieldValue = getFieldValue($posx, $posy, $dataGrid);
-    $possibelThrow = [$posx, $posy];
-    if ($color == 1 && $fieldValue < 0){
-        $possibelThrows[] = $possibelThrow;
-    } elseif($color == -1 && $fieldValue > 0){
-        $possibelThrows[] = $possibelThrow;
+    foreach ($throwMoveVectors as $key => $value){
+        $posx = $x + $value[0];
+        $posy = $y + $value[1];
+        $fieldValue = getFieldValue($posx, $posy, $dataGrid);
+        $possibelThrow = [$posx, $posy];
+        if ($color == 1 && $fieldValue < 0){
+            $possibelThrows[] = $possibelThrow;
+        } elseif($color == -1 && $fieldValue > 0){
+            $possibelThrows[] = $possibelThrow;
+        }
     }
     return $possibelThrows;
 }
@@ -361,7 +388,7 @@ function createDataGridForJSON(){
     ];
     $dataGrid = [
         [0,0,-4,-1,-6,-1,0,0],
-        [0,0,0,0,-1,0,0,0],
+        [0,0,0,-1,-1,-1,0,0],
         [0,0,0,0,1,0,0,0],
         [0,0,0,0,0,3,0,0],
         [0,0,0,0,0,0,0,0],
