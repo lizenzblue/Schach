@@ -183,7 +183,7 @@ function bauerMoveCalculation($oldCoords, $newCoords, $dataGrid){
             -1 => [[1,1],[-1,1]],
              1 => [[1,-1],[-1,-1]],
     ];
-    $fieldValue = $dataGrid[$newCoords[1]][$newCoords[0]];
+    $fieldValue = getFieldValue($newCoords[0], $newCoords[1], $dataGrid);
     $throw = false;
     $possibleMoves = [];
     $color = getCurrentColor();
@@ -198,13 +198,17 @@ function bauerMoveCalculation($oldCoords, $newCoords, $dataGrid){
         return checkIfRequestedMoveIsInAllowedMoves($newCoords, $possibelThrows);
     } else {
         if($fieldValue != 0){
-            fancy_dump($fieldValue);
             return false;
         }
     }
-    if($color == 1 && $oldCoords[0] == 6 || $color == -1 && $oldCoords[0] == 1){
+    if($color == 1 && $oldCoords[1] == 6 || $color == -1 && $oldCoords[1] == 1){
         foreach($moveVectors[$color] as $key => $value){
             $possibleMoves = array_merge($possibleMoves, calculateMoves($oldCoords[0], $oldCoords[1], $value, $dataGrid, true));
+        }
+        foreach($possibleMoves as $key => $value){
+            if(getFieldValue($value[0], $value[1], $dataGrid) != 0){
+                return false;
+            }
         }
     } else {
         $dataForCalculateMoves = $moveVectors[$color];
