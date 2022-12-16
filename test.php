@@ -88,7 +88,7 @@ function checkIfFigurIsInWay($posX, $posY, $dataGrid, $figureValue){
 
 function check($coords, $dataGrid, $color){
     $enemyPieces = getAllPiecesOfColor($color, $dataGrid);
-    if(isUnderAttack($coords, $dataGrid, $enemyPieces, true)){
+    if(isUnderAttack($coords, $dataGrid, $enemyPieces)){
         if($color == 1){
             echo "Black King check";
         } else {
@@ -106,6 +106,17 @@ function checkMate($posKing, $dataGrid){
         return true;
     }
     return false;
+}
+
+function checkIfFigureCanSaveKing($coords, $dataGrid){
+    $color = getCurrentColor();
+    $pieces = getAllPiecesOfColor($color, $dataGrid);
+    foreach($pieces as $key => $value){
+        if(validation($value["x"], $value["y"], $coords[0], $coords[1], $dataGrid, true)){
+            return true;
+        }
+        return false;
+    }
 }
 
 function checkForCheckAndCheckMate($dataGrid){
@@ -213,7 +224,6 @@ function validationForWhite($oldCoords, $possibleMoves, $dataGrid){
             unset($possibleMoves[$key]);
         }
     }
-    fancy_dump($possibleMoves);
     return $possibleMoves;
 }
 // change name something with filter
@@ -236,7 +246,10 @@ function validateBauernMoves($oldCoords, $newCoords, $dataGrid, $simulateMove){
     $possibleMoves	= [];
     if($simulateMove){
         $possibleMoves = array_merge($possibleMoves, bauernThowCalculation($oldCoords, $dataGrid));
-        return $possibleMoves;
+        if(in_array($newCoords, $possibleMoves)){
+            return true;
+        }
+        return false;
     }
     $possibleMoves = array_merge($possibleMoves, bauerMoveCalculation($oldCoords, $dataGrid));
     $possibleMoves = array_merge($possibleMoves, bauernThowCalculation($oldCoords, $dataGrid));
@@ -284,15 +297,15 @@ function moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $moveVec
     return checkIfRequestedMoveIsInAllowedMoves(getRequestMove($newX, $newY), getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVectors, $onlyOneTime));
 }
 
-function isUnderAttack($targets, $grid, $enemyPieces, $debug = false) {
+function isUnderAttack($targets, $grid, $enemyPieces, $saveKing = false) {
     $targetX = $targets[0];
     $targetY = $targets[1];
     foreach ($enemyPieces as $enemyPiece) {
         $pieceX = $enemyPiece["x"];
         $pieceY = $enemyPiece["y"];
         if (validation($pieceX, $pieceY, $targetX, $targetY, $grid, true)) {
-            if($debug){
-                fancy_dump($enemyPiece);
+            if($saveKing){
+                return $enemyPiece;
             }
             return true;
         }
@@ -397,16 +410,16 @@ function createDataGridForJSON(){
         [1,1,1,1,1,1,1,1],
         [2,3,4,5,6,4,3,2],
     ];
-    $dataGrid = [
+    /*$dataGrid = [
         [0,0,-4,-1,-6,-1,0,0],
         [0,0,1,0,-1,0,0,0],
-        [0,0,0,0,0,0,0,0],
+        [0,0,0,1,0,0,0,0],
         [0,0,0,0,0,3,0,0],
         [0,0,0,1,0,0,0,0],
         [0,1,-1,0,1,0,0,0],
         [0,0,0,1,0,0,0,0],
         [0,0,0,0,0,0,0,0],
-    ];
+    ];*/
     file_put_contents("dataGrid.json", json_encode($dataGrid));
     return $dataGrid;
 }
