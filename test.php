@@ -88,7 +88,7 @@ function checkIfFigurIsInWay($posX, $posY, $dataGrid, $figureValue){
 
 function check($coords, $dataGrid, $color){
     $enemyPieces = getAllPiecesOfColor($color, $dataGrid);
-    if(isUnderAttack($coords, $dataGrid, $enemyPieces)){
+    if(isUnderAttack($coords, $dataGrid, $enemyPieces, true)){
         if($color == 1){
             echo "Black King check";
         } else {
@@ -104,6 +104,24 @@ function checkMate($posKing, $dataGrid){
     $possibleMoves = getPossibleMovesWithVector($posKing[0], $posKing[1], $dataGrid, $moveVectors, true);
     if(empty($possibleMoves)){
         return true;
+    }
+    return false;
+}
+
+function checkForCheckAndCheckMate($dataGrid){
+    $posKing = [];
+    $color = getCurrentColor();
+    $enemyPieces = getAllPiecesOfColor($color * -1, $dataGrid);
+    foreach($enemyPieces as $key => $enemyPiece){
+        if($enemyPiece["fieldValue"] == 6 || $enemyPiece["fieldValue"] == -6){
+            $posKing = [$enemyPiece["x"], $enemyPiece["y"]];
+        }
+    }
+    if(check($posKing, $dataGrid, $color)){
+        if(checkMate($posKing, $dataGrid)){
+            echo "CHECKMATE";
+            return true;
+        }
     }
     return false;
 }
@@ -127,24 +145,6 @@ function getRequestMove($x, $y){
 }
 //---------------------------------------------------------------
 
-function checkForCheckAndCheckMate($dataGrid){
-    $posKing = [];
-    $color = getCurrentColor();
-    $enemyPieces = getAllPiecesOfColor($color * -1, $dataGrid);
-    foreach($enemyPieces as $key => $enemyPiece){
-        if($enemyPiece["fieldValue"] == 6 || $enemyPiece["fieldValue"] == -6){
-            $posKing = [$enemyPiece["x"], $enemyPiece["y"]];
-        }
-    }
-    if(check($posKing, $dataGrid, $color)){
-        if(checkMate($posKing, $dataGrid)){
-            echo "CHECKMATE";
-            return true;
-        }
-    }
-    return false;
-}
-
 function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false){
 
     if($newX > 7 && $newX < 0 && $newY > 7 && $newY < 0){
@@ -162,7 +162,7 @@ function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false
 
     switch ($absoluteFieldValue) {
         case 1:
-            return bauerMoveCalculation([$oldX, $oldY], [$newX, $newY], $dataGrid);
+            return validateBauernMoves([$oldX, $oldY], [$newX, $newY], $dataGrid, $simulateMove);
         case 6:
             return koenigMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove);
         case 3:
@@ -174,64 +174,93 @@ function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false
     }
 }
 
-function bauerMoveCalculation($oldCoords, $newCoords, $dataGrid){
-    $moveVectors = [
-            -1 => [[0,1], [0,2]],
-             1 => [[0,-1], [0,-2]],
-    ];
-    $throwVectors = [
-            -1 => [[1,1],[-1,1]],
-             1 => [[1,-1],[-1,-1]],
-    ];
-    $fieldValue = getFieldValue($newCoords[0], $newCoords[1], $dataGrid);
-    $throw = false;
-    $possibleMoves = [];
+function bauerMoveCalculation($oldCoords, $dataGrid){
     $color = getCurrentColor();
-    if($newCoords[0] < 0 && $newCoords[0] > 7 && $newCoords[1] < 0 && $newCoords[1] > 7){
-        return false;
+    $calculatedMoves = [];
+    $moveVectors = [
+        -1 => [[0,1], [0,2]],
+         1 => [[0,-1], [0,-2]],
+    ];
+    foreach($moveVectors[$color] as $key => $value){
+        $calculatedMoves = array_merge($calculatedMoves, calculateMoves($oldCoords[0], $oldCoords[1], $value, $dataGrid, true));
     }
-    if($oldCoords[0] != $newCoords[0] && $oldCoords[1] != $newCoords[1]){
-        $throw = true;
-    }
-    if($throw){
-        $possibelThrows = bauernThow($oldCoords[0], $oldCoords[1], $throwVectors[$color], $dataGrid, $color);
-        return checkIfRequestedMoveIsInAllowedMoves($newCoords, $possibelThrows);
-    } else {
-        if($fieldValue != 0){
-            return false;
-        }
-    }
-    if($color == 1 && $oldCoords[1] == 6 || $color == -1 && $oldCoords[1] == 1){
-        foreach($moveVectors[$color] as $key => $value){
-            $possibleMoves = array_merge($possibleMoves, calculateMoves($oldCoords[0], $oldCoords[1], $value, $dataGrid, true));
-        }
-        foreach($possibleMoves as $key => $value){
-            if(getFieldValue($value[0], $value[1], $dataGrid) != 0){
-                return false;
-            }
-        }
-    } else {
-        $dataForCalculateMoves = $moveVectors[$color];
-        unset($dataForCalculateMoves[1]);
-        $possibleMoves = array_merge($possibleMoves, calculateMoves($oldCoords[0], $oldCoords[1], $dataForCalculateMoves[0], $dataGrid, true));
-    }
-    return checkIfRequestedMoveIsInAllowedMoves($newCoords, $possibleMoves);
+    return $calculatedMoves;
 }
 
-function bauernThow($x, $y, $throwMoveVectors, $dataGrid, $color){
-    $possibelThrows = [];
-    foreach ($throwMoveVectors as $key => $value){
-        $posx = $x + $value[0];
-        $posy = $y + $value[1];
-        $fieldValue = getFieldValue($posx, $posy, $dataGrid);
-        $possibelThrow = [$posx, $posy];
-        if ($color == 1 && $fieldValue < 0){
-            $possibelThrows[] = $possibelThrow;
-        } elseif($color == -1 && $fieldValue > 0){
-            $possibelThrows[] = $possibelThrow;
+function bauernThowCalculation($oldCoords, $dataGrid){
+    $color = getCurrentColor();
+    $throwMoveVectors = [
+        -1 => [[1,1], [-1,1]],
+         1 => [[1,-1], [-1,-1]],
+    ];
+    $calculatedThrows = [];
+
+    foreach($throwMoveVectors[$color] as $key => $value){
+        $calculatedThrows = array_merge($calculatedThrows, calculateMoves($oldCoords[0], $oldCoords[1], $value, $dataGrid, true));
+    }
+    return $calculatedThrows;
+}
+
+//change oldCoords name
+function validationForWhite($oldCoords, $possibleMoves, $dataGrid){
+    foreach($possibleMoves as $key => $value){
+        if($oldCoords[0] != $value[0] && $oldCoords[1] != $value[1]){
+            if(getFieldValue($value[0], $value[1], $dataGrid) >= 0){
+                unset($possibleMoves[$key]);
+            }
+        }
+        if(abs($oldCoords[1] - $value[1]) == 2 && $oldCoords[1] != 6){
+            unset($possibleMoves[$key]);
         }
     }
-    return $possibelThrows;
+    fancy_dump($possibleMoves);
+    return $possibleMoves;
+}
+// change name something with filter
+function validationForBlack($oldCoords, $possibleMoves, $dataGrid){
+    foreach($possibleMoves as $key => $value){
+        if($oldCoords[0] != $value[0] && $oldCoords[1] != $value[1]){
+            if(getFieldValue($value[0], $value[1], $dataGrid) <= 0){
+                unset($possibleMoves[$key]);
+            }
+        }
+        if(abs($oldCoords[1] - $value[1]) == 2 && $oldCoords[1] != 1){
+            unset($possibleMoves[$key]);
+        }
+    }
+    return $possibleMoves;
+}
+
+function validateBauernMoves($oldCoords, $newCoords, $dataGrid, $simulateMove){
+    $color = getCurrentColor();
+    $possibleMoves	= [];
+    if($simulateMove){
+        $possibleMoves = array_merge($possibleMoves, bauernThowCalculation($oldCoords, $dataGrid));
+        return $possibleMoves;
+    }
+    $possibleMoves = array_merge($possibleMoves, bauerMoveCalculation($oldCoords, $dataGrid));
+    $possibleMoves = array_merge($possibleMoves, bauernThowCalculation($oldCoords, $dataGrid));
+
+    //--------------------------------special validation due to the color--------------------------------
+    switch($color){
+        case 1:
+            $possibleMoves = validationForWhite($oldCoords, $possibleMoves, $dataGrid);
+            break;
+        case -1:
+            $possibleMoves = validationForBlack($oldCoords, $possibleMoves, $dataGrid);
+            break;
+    }
+    //---------------------------------------------------------------------------------------------------
+    //--------------------------------basic validation--------------------------------
+    foreach($possibleMoves as $key => $value){
+        if($oldCoords[0] == $value[0] && $oldCoords[1] != $value[1]){
+           if(getFieldValue($value[0], $value[1], $dataGrid) != 0){
+            unset($possibleMoves[$key]);
+           } 
+        }
+    }
+    //-------------------------------------------------------------------------------
+    return checkIfRequestedMoveIsInAllowedMoves($newCoords, $possibleMoves);
 }
 
 function koenigMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove){
@@ -255,13 +284,16 @@ function moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $moveVec
     return checkIfRequestedMoveIsInAllowedMoves(getRequestMove($newX, $newY), getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVectors, $onlyOneTime));
 }
 
-function isUnderAttack($targets, $grid, $enemyPieces) {
+function isUnderAttack($targets, $grid, $enemyPieces, $debug = false) {
     $targetX = $targets[0];
     $targetY = $targets[1];
     foreach ($enemyPieces as $enemyPiece) {
         $pieceX = $enemyPiece["x"];
         $pieceY = $enemyPiece["y"];
         if (validation($pieceX, $pieceY, $targetX, $targetY, $grid, true)) {
+            if($debug){
+                fancy_dump($enemyPiece);
+            }
             return true;
         }
     }
@@ -345,7 +377,7 @@ function array_dump($array) {
         if (is_array($value)) {
             echo array_dump($value);
         } else {
-            echo $value;
+            echo $key . " => " . $value;
         }
         echo '</li>';
     }
@@ -367,11 +399,11 @@ function createDataGridForJSON(){
     ];
     $dataGrid = [
         [0,0,-4,-1,-6,-1,0,0],
-        [0,0,1,-1,-1,-1,0,0],
-        [0,0,0,0,1,0,0,0],
-        [0,0,0,0,0,3,0,0],
+        [0,0,1,0,-1,0,0,0],
         [0,0,0,0,0,0,0,0],
-        [0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,3,0,0],
+        [0,0,0,1,0,0,0,0],
+        [0,1,-1,0,1,0,0,0],
         [0,0,0,1,0,0,0,0],
         [0,0,0,0,0,0,0,0],
     ];
