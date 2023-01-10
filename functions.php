@@ -3,7 +3,7 @@
 function saveDataGrid($contentForJSON)
 {
     $finalData = json_encode($contentForJSON);
-    file_put_contents("dataGrid.json", $finalData);
+    file_put_contents("./dataForGame/dataGrid.json", $finalData);
 }
 
 function colorPlayfield($x, $y)
@@ -98,6 +98,80 @@ function check($coords, $dataGrid, $color, $onlytesting = false)
     return false;
 }
 
+function getCountedMoves(){
+    return (array) json_decode(file_get_contents("./dataForGame/countedMovesForRochade.json"));
+}
+
+function detectTurmForRochade($posKing, $moveToCoords){
+    $color = getCurrentColor();
+    $returnValue = "";
+    if($moveToCoords[0] < $posKing[0]){
+        ($color == 1) ?  $returnValue = "countedMovesWhiteTurmOne" : $returnValue = "countedMovesBlackTurmOne";
+    } else {
+        ($color == 1) ?  $returnValue = "countedMovesWhiteTurmTwo" : $returnValue = "countedMovesBlackTurmTwo";
+    }
+    return $returnValue;
+}
+
+function checkIfFieldsBetweenAreEmpty($coordsFigureOne, $coordsFigureTwo, $moveVector, $dataGrid){
+    while($coordsFigureOne[0] != $coordsFigureTwo[0]){
+        $coordsFigureOne[0] += $moveVector[0];
+        if($dataGrid[$coordsFigureOne[0]][$coordsFigureOne[1]] != 0){
+            return false;
+        }
+    }
+    return true;
+}
+
+function rochade($posKing, $dataGrid, $kingMoveCoords){ 
+    $posRock = [];
+    $pieces =  getAllPiecesOfColor(getCurrentColor(), $dataGrid); 
+    $color = getCurrentColor();
+    $assingKings = [
+        1 => "countedMovesWhiteKing",
+        -1 => "countedMovesBlackKing",
+    ];
+    $detectedFigures = [
+        "king" => $assingKings[$color],
+        "rock" => detectTurmForRochade($posKing, $kingMoveCoords),
+    ];
+    $moveVectorBetweenKingAndRock = [];
+
+    (strpos($detectedFigures["rock"], "One")) ? $moveVectorBetweenKingAndRock = [1, 0] : $moveVectorBetweenKingAndRock = [-1, 0];
+
+    if(checkForCheckAndCheckMate($dataGrid)){
+        return false;
+    }
+
+    if(!(strpos($detectedFigures["king"], "White") && strpos($detectedFigures["rock"], "White") || 
+    strpos($detectedFigures["king"], "Black") && strpos($detectedFigures["rock"], "Black"))){
+        return false;
+    }
+
+    $countedMoves = getCountedMoves();
+    if($countedMoves[$detectedFigures["king"]] != 0 || $countedMoves[$detectedFigures["rock"]] != 0){
+        return false;
+    } 
+
+    if(strpos($detectedFigures["rock"], "One")){
+        ($color == 1) ? $posRock = [0, 7] : $posRock = [0, 0];
+    } else {
+        ($color == 1) ? $posRock = [7, 7] : $posRock = [7, 0];
+    }
+
+    if(!checkIfFieldsBetweenAreEmpty($posKing, $posRock, $moveVectorBetweenKingAndRock, $dataGrid)){
+        return false;
+    }
+    $coords = $posKing;
+    for ($x=0; $x <  2; $x++) { 
+        $coords[0] -= $moveVectorBetweenKingAndRock[0];
+        if(isUnderAttack($coords, $dataGrid, getAllPiecesOfColor($color * -1, $dataGrid))){
+            return false;
+        }
+    }
+    return true;
+}
+
 function checkMate($posKing, $dataGrid)
 {
     $possibleMoves = koenigMoveValid($posKing[0], $posKing[1], 0, 0, $dataGrid, false, true);
@@ -116,7 +190,6 @@ function checkIfFigureCanSaveKing($coordsOfKing, $dataGrid)
     $enemyPieces = getAllPiecesOfColor($color * -1, $dataGrid);
     $playerPieces = getAllPiecesOfColor($color, $dataGrid);
     $attackerPos = isUnderAttack($coordsOfKing, $dataGrid, $enemyPieces, true);
-    $fieldalueOfAttacker = $dataGrid[$attackerPos["x"]][$attackerPos["y"]];
     $moveVector = [$coordsOfKing[0] - $attackerPos["x"], $coordsOfKing[1] - $attackerPos["y"]];
     ($moveVector[0] < 0) ? $moveVector[0] = -1 : $moveVector[0] = 1;
     ($moveVector[1] < 0) ? $moveVector[1] = -1 : $moveVector[1] = 1;
@@ -177,6 +250,30 @@ function getRequestMove($x, $y)
     return $requestMove;
 }
 
+function trackTurmMoves($coords, $dataGrid){
+    $coordsOfRocksAndKings = [[0, 7], [7, 7], [0, 0], [7, 0], [4, 7], [4, 0]];
+    $figureThatMoves = "";
+    $arrayToAsignFigure = [
+        //------------Rocks-------------
+        0 => "countedMovesWhiteTurmOne",
+        1 => "countedMovesWhiteTurmTwo",
+        2 => "countedMovesBlackTurmOne",
+        3 => "countedMovesBlackTurmTwo",
+        //------------Kings-------------
+        4 => "countedMovesWhiteKing",
+        5 => "countedMovesBlackKing",
+    ];
+    foreach($coordsOfRocksAndKings as $key => $coordsOfFigure){
+        if($coordsOfFigure == $coords){
+             $figureThatMoves = $arrayToAsignFigure[$key];
+             $jsonData = getCountedMoves();
+             $jsonData[$figureThatMoves] = 1;
+             file_put_contents("./dataForGame/countedMovesForRochade.json", json_encode($jsonData));
+        }
+    }
+
+}
+
 //---------------------------------------------------------------
 
 function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false)
@@ -199,11 +296,21 @@ function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false
         case 1:
             return validateBauernMoves([$oldX, $oldY], [$newX, $newY], $dataGrid, $simulateMove);
         case 6:
-            return koenigMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove);
+
+            $koenigMoveTrueOrFalse = koenigMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove);
+            if($koenigMoveTrueOrFalse && !$simulateMove){
+                trackTurmMoves([$oldX, $oldY], $dataGrid);
+            }
+            return $koenigMoveTrueOrFalse;
+        case 2:
+            $turmMoveTrueOrFalse = moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $allFigureMoveVectors[$absoluteFieldValue]);
+            if($turmMoveTrueOrFalse && !$simulateMove){
+                trackTurmMoves([$oldX, $oldY], $dataGrid);
+            }
+            return $turmMoveTrueOrFalse;
         case 3:
             $onlyOneTime = true;
-        // break fehlt, weil der Reiter ein special case ist und $onlyOneTime nur für ihn veraendert werden muss
-        // PS: Idee kam von Ralf
+            return moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $allFigureMoveVectors[$absoluteFieldValue]);
         default:
             return moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $allFigureMoveVectors[$absoluteFieldValue]);
     }
@@ -455,6 +562,16 @@ function createDataGridForJSON()
         [1, 1, 1, 1, 1, 1, 1, 1],
         [2, 3, 4, 5, 6, 4, 3, 2],
     ];
+    $dataGrid = [
+        [-2, 0, 0, 0, -6, 0, 0, -2],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [2, 0, 0, 0, 6, 0, 0, 2],
+    ];
     /*$dataGrid = [
         [5, 5, 5, -4, 0, -1, 0, 6],
         [0, 0, 0, 0, -1, -1, 0, 0],
@@ -465,13 +582,13 @@ function createDataGridForJSON()
         [0, -6, 0, 0, 0, 0, 0, 2],
         [0, 0, 0, 0, 0, 0, 0, 0],
     ];*/
-    file_put_contents("dataGrid.json", json_encode($dataGrid));
+    file_put_contents("./dataForGame/dataGrid.json", json_encode($dataGrid));
     return $dataGrid;
 }
 
 function getCurrentColor()
 {
-    return file_get_contents("currentColor.json");
+    return file_get_contents("./dataForGame/currentColor.json");
 }
 
 function isCoordinateInPieces($pieceX, $pieceY, $piecesOfColor)

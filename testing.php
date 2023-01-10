@@ -67,9 +67,6 @@ function testGetPieces(){
    foreach($colors as $color){
       $pieces = getAllPiecesOfColor($color, $dataGrid);
       foreach($pieces as $key => $piece){
-         if($key == $randNumber){
-            $piece["fieldValue"] = -1;
-         }
          if($color == 1){
             if($piece["fieldValue"] < 0){
                $result["messages"][] =   "Error at " . $key;

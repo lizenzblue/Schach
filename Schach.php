@@ -15,22 +15,29 @@ include_once "functions.php";
 
 $error = '';
 
-if (file_exists("dataGrid.json")) {
-    $dataGrid = json_decode(file_get_contents("dataGrid.json"), true);
+if (file_exists("./dataForGame/dataGrid.json")) {
+    $dataGrid = json_decode(file_get_contents("./dataForGame/dataGrid.json"), true);
 } else {
     $dataGrid = createDataGridForJSON();
 }
-
 if (isset($_POST["newGame"])) {
     $dataGrid = createDataGridForJSON();
-    file_put_contents("currentColor.json", json_encode(1));
+    file_put_contents("./dataForGame/currentColor.json", json_encode(1));
+    $dataForJSON =  json_encode([
+        'countedMovesWhiteKing' => 0, 
+        'countedMovesWhiteTurmOne' => 0,
+        'countedMovesWhiteTurmTwo' => 0,
+        'countedMovesBlackKing' => 0,
+        'countedMovesBlackTurmOne' => 0,
+        'countedMovesBlackTurmTwo' => 0, 
+    ]);
+    file_put_contents("./dataForGame/countedMovesForRochade.json", $dataForJSON);
 }
-
 if (isset($_POST["submit"])) {
     $inputs = [(int)$_POST["oldx"], (int)$_POST["oldy"], (int)$_POST["newx"], (int)$_POST["newy"]];
     $color = (int)getCurrentColor();
-    if (!file_exists("currentColor.json")) {
-        file_put_contents("currentColor.json", json_encode(1));
+    if (!file_exists("./dataForGame/currentColor.json")) {
+        file_put_contents("./dataForGame/currentColor.json", json_encode(1));
     }
 
     $piecesOfColor = getAllPiecesOfColor($color, $dataGrid);
@@ -39,7 +46,7 @@ if (isset($_POST["submit"])) {
             $dataGrid = moveFigure($inputs[0], $inputs[1], $inputs[2], $inputs[3], $dataGrid);
             saveDataGrid($dataGrid);
             $color = $color * -1;
-            file_put_contents("currentColor.json", json_encode($color));
+            file_put_contents("./dataForGame/currentColor.json", json_encode($color));
         } else {
             $error = 'Figurenzug ist nicht valide!';
         }
