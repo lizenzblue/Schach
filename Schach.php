@@ -43,7 +43,12 @@ if (isset($_POST["submit"])) {
     $piecesOfColor = getAllPiecesOfColor($color, $dataGrid);
     if ($dataGrid[$inputs[1]][$inputs[0]] > 0 && $color > 0 || $dataGrid[$inputs[1]][$inputs[0]] < 0 && $color < 0) {
         if (validation($inputs[0], $inputs[1], $inputs[2], $inputs[3], $dataGrid)) {
-            $dataGrid = moveFigure($inputs[0], $inputs[1], $inputs[2], $inputs[3], $dataGrid);
+            if(checkForRochade([$inputs[0], $inputs[1]], [$inputs[2], $inputs[3]], $dataGrid)){
+                $dataForExecution = rochade([$inputs[0], $inputs[1]], $dataGrid, [$inputs[2], $inputs[3]], true);
+                $dataGrid = executeRochade($dataForExecution, $dataGrid);
+            } else {
+                $dataGrid = moveFigure($inputs[0], $inputs[1], $inputs[2], $inputs[3], $dataGrid);
+            }
             saveDataGrid($dataGrid);
             $color = $color * -1;
             file_put_contents("./dataForGame/currentColor.json", json_encode($color));
