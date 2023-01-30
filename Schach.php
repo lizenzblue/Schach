@@ -154,8 +154,8 @@ if(checkForCheckAndCheckMate($dataGrid)){
 <div class="form">
     <form action="Schach.php" method="post">
         <input type="number" name="oldx" placeholder="altes X">
-        <input type="number" name="oldy" placeholder="altex Y">
-        <input type="number" name="newx" placeholder="neuex X">
+        <input type="number" name="oldy" placeholder="altes Y">
+        <input type="number" name="newx" placeholder="neues X">
         <input type="number" name="newy" placeholder="neues Y">
         <input class="btn" type="submit" value="Submit" name="submit">
         <input id ="newGameBtn" class="btn" type="submit" value="New Game" name="newGame">
