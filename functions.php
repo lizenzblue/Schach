@@ -1,5 +1,15 @@
 <?php
 
+function getPossibleMovesToShowOnBoard($coords, $dataGrid){
+    $figure = $dataGrid[$coords[1]][$coords[0]];
+    if(abs($figure) == 1 || abs($figure) == 3 || abs($figure) == 6){
+        $possibleMoves = getPossibleMovesWithVector($coords[0], $coords[1], $dataGrid, getMoveVectorsForFigure($figure), true);
+    } else {
+        $possibleMoves = getPossibleMovesWithVector($coords[0], $coords[1], $dataGrid, getMoveVectorsForFigure($figure));
+    }
+    return $possibleMoves;
+}
+
 function saveDataGrid($contentForJSON)
 {
     $finalData = json_encode($contentForJSON);
@@ -20,16 +30,21 @@ function colorPlayfield($x, $y)
     return $cellClass;
 }
 
-function generateHTML($dataGrid)
-{
+function generateHTML($dataGrid, $highlightCoords = []){
     for ($y = 0; $y < count($dataGrid); $y++) {
         echo '<div class="row">';
         for ($x = 0; $x < count($dataGrid[0]); $x++) {
             $figureValue = $dataGrid[$y][$x];
+            $hightlightClass = '';
+
+            if (in_array([$x, $y], $highlightCoords)) {
+                $hightlightClass = 'markedField';
+            }
+
             if ($figureValue > 0 || $figureValue <= -1) {
-                echo '<div class="' . colorPlayfield($x, $y) . '"> <div id="figure" class="figure">' . getFigureCodeByNumber($figureValue) . '</div></div>';
+                echo '<div class="' . colorPlayfield($x, $y) . ' ' . $hightlightClass . '"> <div id="figure" class="figure">' . getFigureCodeByNumber($figureValue) . '</div></div>';
             } else {
-                echo '<div class="' . colorPlayfield($x, $y) . '"></div>';
+                echo '<div class="' . colorPlayfield($x, $y) . ' ' . $hightlightClass . '"></div>';
             }
         }
         echo '</div>';
@@ -116,7 +131,11 @@ function detectTurmForRochade($posKing, $moveToCoords){
 function checkIfFieldsBetweenAreEmpty($coordsFigureOne, $coordsFigureTwo, $moveVector, $dataGrid){
     while($coordsFigureOne[0] != $coordsFigureTwo[0]){
         $coordsFigureOne[0] += $moveVector[0];
-        if($dataGrid[$coordsFigureOne[0]][$coordsFigureOne[1]] != 0){
+
+        if($coordsFigureOne[0] == 0 ||$coordsFigureOne[0] == 7){
+            break;
+        }
+        if($dataGrid[$coordsFigureOne[1]][$coordsFigureOne[0]] != 0){
             return false;
         }
     }
@@ -124,18 +143,17 @@ function checkIfFieldsBetweenAreEmpty($coordsFigureOne, $coordsFigureTwo, $moveV
 }
 
 function checkForRochade($oldCoords, $newCoords, $dataGrid){
-    return true;
-    /*fancy_dump($oldCoords);
-    fancy_dump($dataGrid);
-    if($dataGrid[$oldCoords[0]][$oldCoords[1]] != 6 || $dataGrid[$oldCoords[0]][$oldCoords[1]] != -6){
-        fancy_dump($dataGrid[$oldCoords[0]][$oldCoords[1]]);
+    $returnValue = true;
+    if($dataGrid[$oldCoords[1]][$oldCoords[0]] != 6 || $dataGrid[$oldCoords[1]][$oldCoords[0]] != -6){
+        $returnValue = false;
     }
     $fieldsmoved = 0;
     ($oldCoords[0] > $newCoords[0]) ? $fieldsmoved = $oldCoords[0] - $newCoords[0] : $fieldsmoved = $newCoords[0] - $oldCoords[0];
-    return ($fieldsmoved == 2 && rochade($oldCoords, $dataGrid, $newCoords, false)) ? true : false;*/
+    ($fieldsmoved == 2) ? $returnValue = true : $returnValue = false;
+    return $returnValue;
 }
 
-function rochade($posKing, $dataGrid, $kingMoveCoords, $getDataForExecution = false){ 
+function rochade($posKing, $dataGrid, $kingMoveCoords){ 
     $posRock = [];
     $pieces =  getAllPiecesOfColor(getCurrentColor(), $dataGrid); 
     $color = getCurrentColor();
@@ -147,23 +165,33 @@ function rochade($posKing, $dataGrid, $kingMoveCoords, $getDataForExecution = fa
         "king" => $assingKings[$color],
         "rock" => detectTurmForRochade($posKing, $kingMoveCoords),
     ];
+    $possibilityRochade = true; 
 
     $moveVectorBetweenKingAndRock = [];
 
-    (strpos($detectedFigures["rock"], "One")) ? $moveVectorBetweenKingAndRock = [1, 0] : $moveVectorBetweenKingAndRock = [-1, 0];
+    if($posKing[0] > $kingMoveCoords[0]){
+        $moveVectorBetweenKingAndRock = [-1, 0];
+    } else {
+        $moveVectorBetweenKingAndRock = [1, 0];
+    }
 
+    
     if(checkForCheckAndCheckMate($dataGrid)){
-        return false;
+
+        $possibilityRochade = false;
     }
 
     if(!(strpos($detectedFigures["king"], "White") && strpos($detectedFigures["rock"], "White") || 
     strpos($detectedFigures["king"], "Black") && strpos($detectedFigures["rock"], "Black"))){
-        return false;
+
+        $possibilityRochade = false;
     }
 
     $countedMoves = getCountedMoves();
+
     if($countedMoves[$detectedFigures["king"]] != 0 || $countedMoves[$detectedFigures["rock"]] != 0){
-        return false;
+
+        $possibilityRochade = false;
     } 
 
     if(strpos($detectedFigures["rock"], "One")){
@@ -171,8 +199,19 @@ function rochade($posKing, $dataGrid, $kingMoveCoords, $getDataForExecution = fa
     } else {
         ($color == 1) ? $posRock = [7, 7] : $posRock = [7, 0];
     }
+    if(!checkIfFieldsBetweenAreEmpty($posKing, $posRock, $moveVectorBetweenKingAndRock, $dataGrid)){
+        $possibilityRochade = false;
+    }
+    $coords = $posKing;
+    for ($x=0; $x < 1; $x++) { 
+        $coords[0] += $moveVectorBetweenKingAndRock[0];
+        if(isUnderAttack($coords, $dataGrid, getAllPiecesOfColor($color * -1, $dataGrid))){
+            $possibilityRochade = false;
+        }
+    }
 
     $result = [
+        "possibility" => $possibilityRochade,
         "rock" => $detectedFigures["rock"],
         "king" => $detectedFigures["king"],
         "rockCoords" => $posRock,
@@ -180,22 +219,7 @@ function rochade($posKing, $dataGrid, $kingMoveCoords, $getDataForExecution = fa
         "kingMoveCoords" => $kingMoveCoords,
     ];
 
-    if($getDataForExecution){
-        return $result;
-    }
-
-    /*if(!checkIfFieldsBetweenAreEmpty($posKing, $posRock, $moveVectorBetweenKingAndRock, $dataGrid)){
-        return false;
-    }*/
-    $coords = $posKing;
-    for ($x=0; $x <  2; $x++) { 
-        $coords[0] -= $moveVectorBetweenKingAndRock[0];
-        if(isUnderAttack($coords, $dataGrid, getAllPiecesOfColor($color * -1, $dataGrid))){
-            return false;
-        }
-    }
-
-    return true;
+    return $result;
 }
 
 function executeRochade($dataOfFigures, $dataGrid){
@@ -210,14 +234,15 @@ function executeRochade($dataOfFigures, $dataGrid){
     $kingMoveToCoords = $dataOfFigures["kingMoveCoords"];
     $kingcoords = $dataOfFigures["kingcoords"];
     $rockCoords = $dataOfFigures["rockCoords"];
-    $dataGrid[$rockCoords[0]][$rockCoords[1]] = 0;
-    $dataGrid[$kingcoords[0]][$kingcoords[1]] = 0;
+    $dataGrid[$rockCoords[1]][$rockCoords[0]] = 0;
+    $dataGrid[$kingcoords[1]][$kingcoords[0]] = 0;
+
     if($color ==  1){
-        $dataGrid[$kingMoveToCoords[0]][$kingMoveToCoords[1]] = 6;
-        $dataGrid[$rockMoveToCoords[0]][$rockMoveToCoords[1]] = 2;
+        $dataGrid[$kingMoveToCoords[1]][$kingMoveToCoords[0]] = 6;
+        $dataGrid[$rockMoveToCoords[1]][$rockMoveToCoords[0]] = 2;
     } else {
-        $dataGrid[$kingMoveToCoords[0]][$kingMoveToCoords[1]] = -6;
-        $dataGrid[$rockMoveToCoords[0]][$rockMoveToCoords[1]] = -2;
+        $dataGrid[$kingMoveToCoords[1]][$kingMoveToCoords[0]] = -6;
+        $dataGrid[$rockMoveToCoords[1]][$rockMoveToCoords[0]] = -2;
     }
     return $dataGrid;
 }
@@ -325,51 +350,63 @@ function trackTurmMoves($coords){
 
 //---------------------------------------------------------------
 
+function getMoveVectorsForFigure($figure, $throw=false){
+    $allFigureMoveVectors = [
+        -1 => [[0, 1], [0, 2]], // BlackRock
+        1 => [[0, -1], [0, -2]], // WhiteRock
+        2 => [[0, 1], [0, -1], [1, 0], [-1, 0]], // Turm
+        3 => [[1, 2], [-1, 2], [1, -2], [-1, -2], [-2, 1], [-2, -1], [2, 1], [2, -1]], // Reiter
+        4 => [[1, 1], [1, -1], [-1, -1], [-1, 1]], // Bishop
+        5 => [[1, 1], [1, -1], [-1, -1], [-1, 1], [0, 1], [0, -1], [1, 0], [-1, 0]], // queen
+        6 => [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, -1], [-1, 1]] //king
+    ];
+    $throwVectorsForRock = [
+        -1 => [[1, 1], [-1, 1]],
+        1 => [[1, -1], [-1, -1]],
+    ];
+    if($throw){
+        return $throwVectorsForRock[$figure];
+    } 
+    return $allFigureMoveVectors[$figure];
+}
+
 function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false)
 {
 
-    if ($newX > 7 && $newX < 0 && $newY > 7 && $newY < 0) {
+    if ($newX > 7 || $newX < 0 || $newY > 7 || $newY < 0) {
         return false;
     }
 
     $absoluteFieldValue = abs($dataGrid[$oldY][$oldX]);
     $onlyOneTime = false;
-    $allFigureMoveVectors = [
-        2 => [[0, 1], [0, -1], [1, 0], [-1, 0]], // Turm
-        3 => [[1, 2], [-1, 2], [1, -2], [-1, -2], [-2, 1], [-2, -1], [2, 1], [2, -1]], // Reiter
-        4 => [[1, 1], [1, -1], [-1, -1], [-1, 1]], // Bishop
-        5 => [[1, 1], [1, -1], [-1, -1], [-1, 1], [0, 1], [0, -1], [1, 0], [-1, 0]] // queen
-    ];
 
     switch ($absoluteFieldValue) {
         case 1:
             return validateBauernMoves([$oldX, $oldY], [$newX, $newY], $dataGrid, $simulateMove);
         case 6:
-
             $koenigMoveTrueOrFalse = koenigMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove);
             if($koenigMoveTrueOrFalse && !$simulateMove){
                 trackTurmMoves([$oldX, $oldY]);
             }
             return $koenigMoveTrueOrFalse;
         case 2:
-            $turmMoveTrueOrFalse = moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $allFigureMoveVectors[$absoluteFieldValue]);
+            $turmMoveTrueOrFalse = moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, getMoveVectorsForFigure($absoluteFieldValue));
             if($turmMoveTrueOrFalse && !$simulateMove){
                 trackTurmMoves([$oldX, $oldY]);
             }
             return $turmMoveTrueOrFalse;
         case 3:
             $onlyOneTime = true;
-            return moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $allFigureMoveVectors[$absoluteFieldValue]);
+            return moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, getMoveVectorsForFigure($absoluteFieldValue));
         default:
-            return moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, $allFigureMoveVectors[$absoluteFieldValue]);
+            return moveValid($oldX, $oldY, $newX, $newY, $dataGrid, $onlyOneTime, getMoveVectorsForFigure($absoluteFieldValue));
     }
 }
 
 function bauerMoveCalculation($moveVectors, $oldCoords, $dataGrid)
 {
-    $color = getCurrentColor();
     $calculatedMoves = [];
-    foreach ($moveVectors[$color] as $key => $value) {
+    foreach ($moveVectors as $value) {
         $calculatedMoves = array_merge($calculatedMoves, calculateMoves($oldCoords[0], $oldCoords[1], $value, $dataGrid, true));
     }
     return $calculatedMoves;
@@ -377,9 +414,8 @@ function bauerMoveCalculation($moveVectors, $oldCoords, $dataGrid)
 
 function bauernThowCalculation($throwMoveVectors, $oldCoords, $dataGrid)
 {
-    $color = getCurrentColor();
     $calculatedThrows = [];
-    foreach ($throwMoveVectors[$color] as $key => $value) {
+    foreach ($throwMoveVectors as $value) {
         $calculatedThrows = array_merge($calculatedThrows, calculateMoves($oldCoords[0], $oldCoords[1], $value, $dataGrid, true));
     }
     return $calculatedThrows;
@@ -417,25 +453,18 @@ function filteringMovesForBlack($oldCoords, $possibleMoves, $dataGrid)
 
 function validateBauernMoves($oldCoords, $newCoords, $dataGrid, $simulateMove)
 {
-    $moveVectors = [
-        -1 => [[0, 1], [0, 2]],
-        1 => [[0, -1], [0, -2]],
-    ];
-    $throwMoveVectors = [
-        -1 => [[1, 1], [-1, 1]],
-        1 => [[1, -1], [-1, -1]],
-    ];
+    $fieldValue = $dataGrid[$oldCoords[1]][$oldCoords[0]];
     $color = getCurrentColor();
     $possibleMoves = [];
     if ($simulateMove) {
-        $possibleMoves = array_merge($possibleMoves, bauernThowCalculation($throwMoveVectors, $oldCoords, $dataGrid));
+        $possibleMoves = array_merge($possibleMoves, bauernThowCalculation(getMoveVectorsForFigure($fieldValue, true), $oldCoords, $dataGrid));
         if (in_array($newCoords, $possibleMoves)) {
             return true;
         }
         return false;
     }
-    $possibleMoves = array_merge($possibleMoves, bauerMoveCalculation($moveVectors, $oldCoords, $dataGrid));
-    $possibleMoves = array_merge($possibleMoves, bauernThowCalculation($throwMoveVectors, $oldCoords, $dataGrid));
+    $possibleMoves = array_merge($possibleMoves, bauerMoveCalculation(getMoveVectorsForFigure($fieldValue), $oldCoords, $dataGrid));
+    $possibleMoves = array_merge($possibleMoves, bauernThowCalculation(getMoveVectorsForFigure($fieldValue, true), $oldCoords, $dataGrid));
 
     //--------------------------------special validation due to the color--------------------------------
     switch ($color) {
@@ -463,7 +492,7 @@ function validateBauernMoves($oldCoords, $newCoords, $dataGrid, $simulateMove)
 
 function koenigMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove, $onlyGiveBackPossibleMoves = false)
 {
-    $moveVector = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, -1], [-1, 1]];
+    $moveVector = getMoveVectorsForFigure(6);
     $possibleMoves = getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVector, true);
     $enemyPieces = getAllPiecesOfColor(getCurrentColor() * -1, $dataGrid);
     if ($onlyGiveBackPossibleMoves) {
@@ -475,8 +504,9 @@ function koenigMoveValid($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove, $
         return $possibleMoves;
     }
     if (!$simulateMove) {
-        if(rochade([$oldX, $oldY], $dataGrid, [$newX, $newY], false)){
-            $possibleMoves[] = [$newX, $newY];
+        if(checkForRochade([$oldX, $oldY], [$newX, $newY], $dataGrid)){
+            $possibilityAndDataOfRochade = rochade([$oldX, $oldY], $dataGrid, [$newX, $newY]);
+            return $possibilityAndDataOfRochade["possibility"];
         }
         foreach ($possibleMoves as $i => $possibleMove) {
             if (isUnderAttack($possibleMove, $dataGrid, $enemyPieces)) {
@@ -538,7 +568,7 @@ function getAllPiecesOfColor($color, $dataGrid)
     return $pieces;
 }
 
-function getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVectors, $oneTimeOnly)
+function getPossibleMovesWithVector($oldX, $oldY, $dataGrid, $moveVectors, $oneTimeOnly = false)
 {
     $possibleMoves = [];
     foreach ($moveVectors as $key) {
@@ -621,18 +651,8 @@ function createDataGridForJSON()
         [0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0, 0],
-        [2, 0, 0, 0, 6, 0, 0, 2],
+        [2, 0, -4, 0, 6, 0, 0, 2],
     ];
-    /*$dataGrid = [
-        [5, 5, 5, -4, 0, -1, 0, 6],
-        [0, 0, 0, 0, -1, -1, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 3, 0, 0],
-        [0, 0, 0, 1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0],
-        [0, -6, 0, 0, 0, 0, 0, 2],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-    ];*/
     file_put_contents("./dataForGame/dataGrid.json", json_encode($dataGrid));
     return $dataGrid;
 }
