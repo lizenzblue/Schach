@@ -1,7 +1,27 @@
 <?php
 
+function translateChessfieldsToXAndYCoords($chessfieldCorrds, $moveToChessField, $dataGrid){
+    $coords = [0, 0, 0, 0];
+    $chessfield = (array) json_decode(file_get_contents("./dataForGame/schachcoords.json"));
+
+    for ($y = 0; $y < count($chessfield); $y++) {
+        for ($x = 0; $x < count($chessfield[0]); $x++) {
+            if($chessfield[$y][$x] == $moveToChessField){
+                $coords[0] = $x;
+                $coords[1] = $y;
+            }
+            if($chessfield[$y][$x] == $chessfieldCorrds){
+                $coords[2] = $x;
+                $coords[3] = $y;
+            }
+        }
+    }
+    return $coords;
+}
+
 function getPossibleMovesToShowOnBoard($coords, $dataGrid){
-    $figure = $dataGrid[$coords[1]][$coords[0]];
+    $figure = $dataGrid[$coords[3]][$coords[2]];
+    var_dump($coords);
     if(abs($figure) == 1 || abs($figure) == 3 || abs($figure) == 6){
         $possibleMoves = getPossibleMovesWithVector($coords[0], $coords[1], $dataGrid, getMoveVectorsForFigure($figure), true);
     } else {
@@ -100,14 +120,8 @@ function checkIfFigurIsInWay($posX, $posY, $dataGrid, $figureValue)
 function check($coords, $dataGrid, $color, $onlytesting = false)
 {
     $enemyPieces = getAllPiecesOfColor($color * -1, $dataGrid);
+    var_dump(isUnderAttack($coords, $dataGrid, $enemyPieces, true));
     if (isUnderAttack($coords, $dataGrid, $enemyPieces)) {
-        if(!$onlytesting){
-            if ($color == -1) {
-                echo "Black King check";
-            } else {
-                echo "White King check";
-            }
-        }
         return true;
     }
     return false;
@@ -252,15 +266,19 @@ function checkMate($posKing, $dataGrid)
     $possibleMoves = koenigMoveValid($posKing[0], $posKing[1], 0, 0, $dataGrid, false, true);
 
     if (empty($possibleMoves)) {
-        if (!checkIfFigureCanSaveKing($posKing, $dataGrid)) {
-            return true;
-        }
+        $returnValue = checkIfFigureCanSaveKing($posKing, $dataGrid);
+        return $returnValue["canFigureSaveKing"];
     }
     return false;
 }
 
 function checkIfFigureCanSaveKing($coordsOfKing, $dataGrid)
 {
+    $result = [
+        "canFigureSaveKing" => false,
+        "xOfFigureThatCanSaveKing" => 0,
+        "yOfFigureThatCanSaveKing" => 0,
+    ];
     $color = getCurrentColor();
     $enemyPieces = getAllPiecesOfColor($color * -1, $dataGrid);
     $playerPieces = getAllPiecesOfColor($color, $dataGrid);
@@ -278,15 +296,21 @@ function checkIfFigureCanSaveKing($coordsOfKing, $dataGrid)
     foreach ($fieldsBetweenKingAndAttacker as $coordinate) {
         foreach ($playerPieces as $playerPiece) {
             if (validation($playerPiece["x"], $playerPiece["y"], $coordinate[0], $coordinate[1], $dataGrid)) {
-                return true;
+                $result["canFigureSaveKing"] = true;
+                $result["xOfFigureThatCanSaveKing"] = $playerPiece["x"];
+                $reszl["yOfFigureThatCanSaveKing"] = $playerPiece ["y"];
             }
         }
     }
-    return false;
+    return $result;
 }
 
 function checkForCheckAndCheckMate($dataGrid, $onlyTestting = false)
 {
+    $result = [
+        "check" => false,
+        "checkMate" => false,
+    ];
     $posKing = [];
     $color = getCurrentColor();
     $playerPieces = getAllPiecesOfColor($color, $dataGrid);
@@ -295,13 +319,20 @@ function checkForCheckAndCheckMate($dataGrid, $onlyTestting = false)
             $posKing = [$playerPiece["x"], $playerPiece["y"]];
         }
     }
+    $result["check"] = check($posKing, $dataGrid, $color, $onlyTestting);
 
-    if (check($posKing, $dataGrid, $color, $onlyTestting)) {
-        if (checkMate($posKing, $dataGrid)) {
-            return true;
+    if($result["check"] == true){
+        $result["checkMate"] = checkMate($posKing, $dataGrid);
+    }
+
+    if($result["check"] == true){
+        if ($color == -1) {
+            echo "Black King check";
+        } else {
+            echo "White King check";
         }
     }
-    return false;
+    return $result;
 }
 
 function checkIfRequestedMoveIsInAllowedMoves($requestedMove, $allowedMoves)
@@ -369,6 +400,7 @@ function getMoveVectorsForFigure($figure, $throw=false){
     } 
     return $allFigureMoveVectors[$figure];
 }
+
 
 function validation($oldX, $oldY, $newX, $newY, $dataGrid, $simulateMove = false)
 {
@@ -659,7 +691,7 @@ function createDataGridForJSON()
 
 function getCurrentColor()
 {
-    return file_get_contents("./dataForGame/currentColor.json");
+    return (int) json_decode(file_get_contents("./dataForGame/currentColor.json"));
 }
 
 function isCoordinateInPieces($pieceX, $pieceY, $piecesOfColor)

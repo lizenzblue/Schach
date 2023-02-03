@@ -16,6 +16,20 @@ include_once "functions.php";
 $error = '';
 $possibleMovesToShowOnBoard = [];
 
+if(!file_exists("./dataForGame/schachcoords.json")){
+    $chessCordsField = [
+        ["a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"],
+        ["a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7"],
+        ["a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6"],
+        ["a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5"],
+        ["a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4"],
+        ["a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3"],
+        ["a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2"],
+        ["a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1"]
+    ];
+    file_put_contents("./dataForGame/schachcoords.json", json_encode($chessCordsField));
+}
+
 if (file_exists("./dataForGame/dataGrid.json")) {
     $dataGrid = json_decode(file_get_contents("./dataForGame/dataGrid.json"), true);
 } else {
@@ -23,7 +37,12 @@ if (file_exists("./dataForGame/dataGrid.json")) {
 }
 
 if(isset($_POST["showMoves"])){
-    $inputs = [(int)$_POST["oldx"], (int)$_POST["oldy"]];
+    $chessCords = [
+        "old" => $_POST["oldField"],
+        "new" => $_POST["neuesFeld"]
+    ];
+    
+    $inputs = translateChessfieldsToXAndYCoords($chessCords["old"], $chessCords["new"], $dataGrid);
     $possibleMovesToShowOnBoard = getPossibleMovesToShowOnBoard($inputs, $dataGrid);
 }
 
@@ -40,23 +59,35 @@ if (isset($_POST["newGame"])) {
     ]);
     file_put_contents("./dataForGame/countedMovesForRochade.json", $dataForJSON);
 }
+
 if (isset($_POST["submit"])) {
-    $inputs = [(int)$_POST["oldx"], (int)$_POST["oldy"], (int)$_POST["newx"], (int)$_POST["newy"]];
+    $chessCords = [
+        "old" => $_POST["oldField"],
+        "new" => $_POST["neuesFeld"]
+    ];
+    
+    $inputs = translateChessfieldsToXAndYCoords($chessCords["old"], $chessCords["new"], $dataGrid);
     $color = (int)getCurrentColor();
     if (!file_exists("./dataForGame/currentColor.json")) {
         file_put_contents("./dataForGame/currentColor.json", json_encode(1));
     }
 
     $piecesOfColor = getAllPiecesOfColor($color, $dataGrid);
-    if ($dataGrid[$inputs[1]][$inputs[0]] > 0 && $color > 0 || $dataGrid[$inputs[1]][$inputs[0]] < 0 && $color < 0) {
-        if (validation($inputs[0], $inputs[1], $inputs[2], $inputs[3], $dataGrid)) {
-            if(checkForRochade([$inputs[0], $inputs[1]], [$inputs[2], $inputs[3]], $dataGrid)){
-                $dataForExecution = rochade([$inputs[0], $inputs[1]], $dataGrid, [$inputs[2], $inputs[3]]);
+    if ($dataGrid[$inputs[3]][$inputs[2]] > 0 && $color > 0 || $dataGrid[$inputs[3]][$inputs[2]] < 0 && $color < 0) {
+        if (validation($inputs[2], $inputs[3], $inputs[0], $inputs[1], $dataGrid)) {
+            if(checkForRochade([$inputs[2], $inputs[3]], [$inputs[0], $inputs[1]], $dataGrid)){
+                $dataForExecution = rochade([$inputs[2], $inputs[3]], $dataGrid, [$inputs[0], $inputs[1]]);
                 $dataGrid = executeRochade($dataForExecution, $dataGrid);
             } else {
-                $dataGrid = moveFigure($inputs[0], $inputs[1], $inputs[2], $inputs[3], $dataGrid);
+                $dataGrid = moveFigure($inputs[2], $inputs[3], $inputs[0], $inputs[1], $dataGrid);
             }
             saveDataGrid($dataGrid);
+            $checkResult = checkForCheckAndCheckMate($dataGrid);
+            if ($checkResult['check'] === true) {
+                $dataGrid = moveFigure($inputs[0], $inputs[1], $inputs[2], $inputs[3], $dataGrid);
+                $error = 'Du stehst im Schach du Nase!';
+                $color = $color * -1;
+            }
             $color = $color * -1;
             file_put_contents("./dataForGame/currentColor.json", json_encode($color));
         } else {
@@ -66,7 +97,9 @@ if (isset($_POST["submit"])) {
         $error = 'Figurenfarbe ist nicht valide!';
     }
 }
-if(checkForCheckAndCheckMate($dataGrid)){
+
+$check = checkForCheckAndCheckMate($dataGrid);
+if($check["checkMate"] == true){
     echo '<script type="text/javascript">
     window.onload = function () { 
         alert("CHECKMATE"); 
@@ -93,7 +126,6 @@ if(checkForCheckAndCheckMate($dataGrid)){
             font-size: 30px;
             text-align: right;
             cursor: pointer;
-
         }        
 
         .cellWhite {
@@ -117,7 +149,7 @@ if(checkForCheckAndCheckMate($dataGrid)){
         }
 
         .markedField {
-            background-color: rgba(0, 255, 0, 0.2);
+            background-color: green;
         }
 
         .grid {
@@ -182,10 +214,8 @@ if(checkForCheckAndCheckMate($dataGrid)){
 </div>
 <div class="form">
     <form action="Schach.php" method="post">
-        <input type="number" name="oldx" placeholder="altes X">
-        <input type="number" name="oldy" placeholder="altes Y">
-        <input type="number" name="newx" placeholder="neues X">
-        <input type="number" name="newy" placeholder="neues Y">
+        <input type="text" name="oldField" placeholder="altes Feld">
+        <input type="text" name="neuesFeld" placeholder="neues Feld">
         <input class="btn" type="submit" value="Submit" name="submit">
         <input id="newGameBtn" class="btn" type="submit" value="New Game" name="newGame">
         <input id="showMoves" class="btn" type="submit" value="Show Moves" name="showMoves">
